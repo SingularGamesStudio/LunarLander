@@ -15,4 +15,20 @@ PolygonRenderer* newBoxRenderer(Object* parent, Transform shift, int w, int h, u
 
 void Thruster::activate() {
     parent->applyForce(force.rotated(parent->transform.rot), shift.unLocal(parent->transform));
+    active = true;
+}
+
+void Thruster::stop() {
+    active = false;
+    Clear();
+}
+
+void Thruster::Clear() {
+    visual.Clear();
+}
+
+void Thruster::Draw(bool forceFull) {
+    if (!active)
+        return;
+    visual.Draw(forceFull);
 }

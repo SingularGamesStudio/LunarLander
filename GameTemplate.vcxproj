@@ -146,19 +146,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Components.h" />
+    <ClInclude Include="Constants.h" />
     <ClInclude Include="Engine.h" />
     <ClInclude Include="Geometry.h" />
     <ClInclude Include="Object.h" />
-    <ClInclude Include="Render.h" />
+    <ClInclude Include="RocketScience.h" />
     <ClInclude Include="Timer.h" />
+    <ClInclude Include="UI.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Components.cpp" />
     <ClCompile Include="Engine.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Geometry.cpp" />
     <ClCompile Include="Intersect.cpp" />
     <ClCompile Include="Physics.cpp" />
     <ClCompile Include="Render.cpp" />
+    <ClCompile Include="RocketScience.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

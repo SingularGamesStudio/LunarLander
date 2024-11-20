@@ -7,11 +7,13 @@
 
 using std::string, std::vector;
 
+struct PolyCollider;
 struct Component;
 
 struct Collision {
     Dot at;
     Dot norm;
+    PolyCollider* hit;
 };
 
 ///Physical object, attributes defined by adding components
@@ -58,6 +60,7 @@ struct Component {
 /// Controlled component can be activated on button press
 struct Controlled {
     std::vector<char> buttonFilter{};
+    bool active = false;
     Controlled() {}
     virtual void activate() = 0;
     virtual void stop() = 0;
@@ -66,4 +69,5 @@ struct Controlled {
 struct Drawable {
     Drawable() {}
     virtual void Draw(bool forceFull = false) = 0;
+    virtual void Clear() = 0;
 };

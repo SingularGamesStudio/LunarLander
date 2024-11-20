@@ -29,6 +29,12 @@
     <ClCompile Include="Physics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Components.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="RocketScience.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine.h">
@@ -40,10 +46,19 @@
     <ClInclude Include="Geometry.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Render.h">
+    <ClInclude Include="Timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Timer.h">
+    <ClInclude Include="Components.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RocketScience.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Constants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

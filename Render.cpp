@@ -7,7 +7,7 @@
 
 using std::max, std::min;
 /// Draws only perimeter of the polygon, shifted by no more than 1 pixel
-void PolygonRenderer::IncrementalDraw(uint32_t color) {
+void PolygonRenderer::IncrementalDraw(uint32_t color) {//TODO:rewrite
     std::vector<std::pair<int, int>> toDel{};
     std::vector<std::pair<int, int>> toAdd{};
     int xLast = -1, yLast = -1;
@@ -16,6 +16,7 @@ void PolygonRenderer::IncrementalDraw(uint32_t color) {
 
     auto checkPos = [&](int x, int y) {
         if (!shape->Inside(Dot(y, x))) {
+            //if (buffer[x][y] == lastColor)
             buffer[x][y] = 0;
             toDel.push_back({ x, y });
         }
@@ -34,14 +35,19 @@ void PolygonRenderer::IncrementalDraw(uint32_t color) {
 
     for (auto d : drawn) {
         int x = d.first;
-        int y = d.second;//check wheter on perimeter
-        if (xLast != -1 && (x != xLast || yLast == yMin || yLast >= yMaxLast || yLast <= yMinLast)) {
-            checkPos(xLast, yLast);
-        }
+        int y = d.second;
         if (xLast != x) {
+            checkPos(xLast, yLast);
+            for (int i = yMinLast + 1; i < yMaxLast; i++) {
+                if (i <= yMin || i >= yLast)
+                    checkPos(x - 2, i);
+            }
             yMinLast = yMin;
             yMaxLast = yLast;
             yMin = y;
+        }
+        if (y == yMin || y >= yMaxLast || y <= yMinLast) {
+            checkPos(x, y);
         }
         xLast = x;
         yLast = y;
@@ -65,13 +71,14 @@ void PolygonRenderer::IncrementalDraw(uint32_t color) {
 void PolygonRenderer::FullDraw(uint32_t color) {
     for (auto d : drawn) {
         if (!shape->Inside(Dot(d.second, d.first))) {
-            buffer[d.first][d.second] = 0;
+            if (buffer[d.first][d.second] == lastColor)
+                buffer[d.first][d.second] = 0;
         }
     }
     Dot centerNew = shape->Center().unLocal(*shape->transform);
     drawn.clear();
-    int x0 = max(0.0, centerNew.x - shape->Radius()), x1 = min(SCREEN_WIDTH - 1.0, centerNew.x + shape->Radius());
-    int y0 = max(0.0, centerNew.y - shape->Radius()), y1 = min(SCREEN_HEIGHT - 1.0, centerNew.y + shape->Radius());
+    int x0 = max(0.0, centerNew.x - shape->Radius() * 1.1), x1 = min(SCREEN_WIDTH - 1.0, centerNew.x + shape->Radius() * 1.1);
+    int y0 = max(0.0, centerNew.y - shape->Radius() * 1.1), y1 = min(SCREEN_HEIGHT - 1.0, centerNew.y + shape->Radius() * 1.1);
 
     for (int i = x0; i <= x1; i++) {
         for (int j = y0; j <= y1; j++) {
@@ -110,4 +117,13 @@ void PolygonRenderer::Draw(uint32_t color, bool forceFull) {
     }
     lastColor = color;
     lastTransform = *shape->transform;
+}
+
+void PolygonRenderer::Clear() {
+    for (auto d : drawn) {
+        if (buffer[d.first][d.second] == lastColor)
+            buffer[d.first][d.second] = 0;
+    }
+    init = false;
+    drawn.clear();
 }

@@ -14,7 +14,7 @@ void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, dou
             if (aVel.len() > eps)
                 a->parent->velocity -= aVel * (1 + damping);
         }
-        a->parent->collisions.push_back(Collision{ at, aShift, b });
+        a->parent->collisions.push_back(Collision{ at, aShift , b });
     }
     else {//two dynamic objects
         if (!second) {
@@ -33,7 +33,7 @@ void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, dou
         }
         a->parent->transform.pos += aShift / 2;
         b->parent->transform.pos -= aShift / 2;
-        a->parent->collisions.push_back(Collision{ at, aShift, b });//TODO:only add collision if bounce is small enough
+        a->parent->collisions.push_back(Collision{ at, aShift , b });//TODO:only add collision if bounce is small enough
         b->parent->collisions.push_back(Collision{ at, -aShift, a });
     }
 }

@@ -6,10 +6,10 @@
 #include "Timer.h"
 #include "Engine.h"
 #include "Components.h"
-
-//
-//  You are free to modify this file
-//
+#include "RocketScience.h"
+#include "Constants.h"
+#include "UI.h"
+#include <queue>
 
 //  is_key_pressed(int button_vk_code) - check if a key is pressed,
 //                                       use keycodes (VK_SPACE, VK_RIGHT,
@@ -21,20 +21,6 @@
 //  'black' is_window_active() - returns true if window is active
 //  schedule_quit_game() - quit game after act()
 
-namespace global {
-    std::vector<Object*> objects;
-    std::vector<PolyCollider*> colliders;
-    std::vector<Drawable*> drawable;
-    std::vector<Controlled*> controls;
-    std::mt19937 rnd(42);
-};
-
-namespace colors {
-    uint32_t white = 0xffffff;
-    uint32_t brown = 0x4f3737;
-
-};
-
 double getRadius(Object* obj) {
     double r = 0;
     for (auto c : obj->components) {
@@ -45,38 +31,6 @@ double getRadius(Object* obj) {
         }
     }
     return r;
-}
-
-Object* BuildRocket(Transform at) {
-    using namespace global;
-    objects.push_back(new Object(Transform(at), "Rocket"));
-    objects.back()->mass = 1;
-
-    auto body = newBoxRenderer(objects.back(), Transform({ 0, 0 }, 0), 50, 100, colors::white);
-    drawable.push_back(body);
-    colliders.push_back(body);
-    auto head = new PolygonRenderer(objects.back(), new polygon(&objects.back()->transform, { {25, -50}, {0, -75}, {-25, -50} }));
-    head->color = colors::white;
-    drawable.push_back(head);
-    colliders.push_back(head);
-    auto thrusterCollider = new PolygonRenderer(objects.back(), new polygon(&objects.back()->transform, { {25, 75}, {0, 50}, {-25, 75} }));
-    thrusterCollider->color = colors::brown;
-    drawable.push_back(thrusterCollider);
-    colliders.push_back(thrusterCollider);
-
-    auto primaryThruster = new Thruster(objects.back(), { 0, 75 }, { 0, -50 });
-    primaryThruster->buttonFilter = { VK_UP };
-    controls.push_back(primaryThruster);
-    drawable.push_back(primaryThruster);
-    auto rightThruster = new Thruster(objects.back(), { 10, 25 }, { 0, -10 });
-    primaryThruster->buttonFilter = { VK_UP };
-    controls.push_back(primaryThruster);
-    drawable.push_back(primaryThruster);
-    auto leftThruster = new Thruster(objects.back(), { 10, -25 }, { 0, 10 });
-    primaryThruster->buttonFilter = { VK_UP };
-    controls.push_back(primaryThruster);
-    drawable.push_back(primaryThruster);
-    return objects.back();
 }
 
 void fixCenters() {
@@ -109,11 +63,75 @@ void fixCenters() {
     }
 }
 
-// initialize game data in this function
+void RocketState(Object* rocket, double dt) {
+    bool done = false;
+    static double timer = 0;
+    for (Controlled* cont : global::controls) {
+        if (cont->active) {
+            UI::write("rocket state", "Thrusters enabled", colors::white);
+            timer = 0;
+            done = true;
+            break;
+        }
+    }
+    static std::queue<bool> onAir = {};
+    static int onAirCount = 0;
+    static std::vector<Collision> hits;
+    if (onAir.size() > 9) {
+        if (onAir.front())
+            onAirCount--;
+        onAir.pop();
+    }
+    onAir.push(rocket->collisions.empty());
+    if (onAir.back()) {
+        onAirCount++;
+    }
+    else {
+        hits = rocket->collisions;
+    }
+    if (!done) {
+        if (rocket->velocity.len() > 5 || abs(rocket->rotationSpeed) > 5) {
+            timer = 0;
+            UI::write("rocket state", "Rocket unstable", colors::white);
+            return;
+        }
+        if (onAirCount >= 10) {
+            timer = 0;
+            UI::write("rocket state", "Rocket in the air", colors::white);
+            return;
+        }
+        int score = 0;
+        for (auto& coll : hits) {
+            if (coll.hit == nullptr)
+                continue;
+            if (coll.hit->score == 0) {
+                timer = 0;
+                UI::write("rocket state", "Unsuitable terrain for landing", colors::white);
+                return;
+            }
+            else {
+                score += coll.hit->score;
+            }
+        }
+        timer += dt;
+        if (timer < 5) {
+            UI::write("rocket state", std::format("LANDING COMMENCING: {:.3f}", 5 - timer), colors::white);
+        }
+        else {
+            UI::write("rocket state", std::format("ROCKET LANDED, SCORE: {}", score), colors::white);
+        }
+    }
+
+}
+
+/// Initialize game data
 void initialize() {
     using namespace global;
-    // clear backbuffer
+    // set up backbuffer
     memset(buffer, 0, SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(uint32_t));
+
+    UI::start("rocket state", { 20, 500 }, 2);
+
 
     objects.push_back(new Object(Transform({ 0, 0 }, 0), "Ground"));
     objects.back()->physicsLocked = true;
@@ -134,7 +152,7 @@ void initialize() {
     BuildRocket(Transform({ 200, 200 }, 0));
     fixCenters();
 }
-void DrawLine(Line l) {
+void DrawDebugLine(Line l) {
     for (int i = 0; i < SCREEN_HEIGHT; i++) {
         Dot dot = l.get(i);
         if (dot.x >= 0 && dot.y >= 0 && dot.x < SCREEN_WIDTH && dot.y < SCREEN_HEIGHT) {
@@ -143,8 +161,8 @@ void DrawLine(Line l) {
     }
 }
 
-// this function is called to update game data,
-// dt - time elapsed since the previous update (in seconds)
+/// Called to update game data,
+/// dt - time elapsed since the previous update (in seconds)
 void act(float dt) {
     using namespace global;
     //if (!is_window_active()) return;
@@ -152,7 +170,7 @@ void act(float dt) {
 
     for (auto& object : objects) {
         if (!object->physicsLocked) {
-            object->applyForce(dotUp * 9.8, object->transform.pos);
+            object->applyForce(dotUp * 9.8 * object->mass, object->transform.pos);
         }
     }
     for (int i = 0; i < colliders.size(); i++) {
@@ -173,12 +191,6 @@ void act(float dt) {
             }
         }
     }
-    //OutputDebugStringA(std::format("{}\n", cnt).c_str());
-    for (auto& object : objects) {
-        if (!object->physicsLocked) {
-            object->evalCollisions(dt);
-        }
-    }
     std::unordered_set<char> pressed = {};
     for (char button : vector<char>{ VK_SPACE, VK_RIGHT,VK_LEFT, VK_UP, VK_DOWN, 'A', 'B' }) {
         if (is_key_pressed(button)) {
@@ -195,6 +207,17 @@ void act(float dt) {
         }
         if (active)
             control->activate();
+        else
+            control->stop();
+    }
+    //OutputDebugStringA(std::format("{}\n", cnt).c_str());
+    for (auto& object : objects) {
+        if (object->name == "Rocket") {
+            RocketState(object, dt);
+        }
+        if (!object->physicsLocked) {
+            object->evalCollisions(dt);
+        }
     }
     for (auto& object : objects) {
         if (!object->physicsLocked) {
@@ -211,9 +234,9 @@ void act(float dt) {
 }
 
 
-// fill buffer in this function
-// uint32_t buffer[SCREEN_HEIGHT][SCREEN_WIDTH] - is an array of 32-bit colors
-// (8 bits per R, G, B)
+/// fill buffer in this function
+/// uint32_t buffer[SCREEN_HEIGHT][SCREEN_WIDTH] - is an array of 32-bit colors
+/// (8 bits per R, G, B)
 void draw() {
     //if (!is_window_active()) return;
     for (auto& renderer : global::drawable) {
@@ -222,7 +245,7 @@ void draw() {
     Timer::print();
 }
 
-// free game data in this function
+/// free game data in this function
 void finalize() {
     using namespace global;
 }
