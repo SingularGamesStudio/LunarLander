@@ -1,33 +1,42 @@
-#include "Render.h"
+#include "Components.h"
 #include "Engine.h"
-
+#include "Timer.h"
+#include<format>
+#include<chrono>
 #include<iostream>
 
+using std::max, std::min;
+/// Draws only perimeter of the polygon, shifted by no more than 1 pixel
 void PolygonRenderer::IncrementalDraw(uint32_t color) {
     std::vector<std::pair<int, int>> toDel{};
     std::vector<std::pair<int, int>> toAdd{};
     int xLast = -1, yLast = -1;
     int yMinLast = -1, yMaxLast = -1;
     int yMin = -1;
-    for (auto d : drawn) {
-        int x = d.first;
-        int y = d.second;
-        if (xLast != -1 && (x != xLast || yLast == yMin || yLast >= yMaxLast || yLast <= yMinLast)) {
-            if (!item->Inside(Dot(yLast, xLast))) {
-                buffer[xLast][yLast] = 0;
-                toDel.push_back({ xLast, yLast });
-            }
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    std::pair<int, int> dot{ xLast + dx, yLast + dy };
-                    if (dot.first < 0 || dot.second < 0 || dot.first >= SCREEN_HEIGHT || dot.second >= SCREEN_WIDTH)
-                        continue;
-                    if (item->Inside(Dot{ 1.0 * dot.second, 1.0 * dot.first })) {
-                        buffer[dot.first][dot.second] = color;
-                        toAdd.push_back(dot);
-                    }
+
+    auto checkPos = [&](int x, int y) {
+        if (!shape->Inside(Dot(y, x))) {
+            buffer[x][y] = 0;
+            toDel.push_back({ x, y });
+        }
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                std::pair<int, int> dot{ x + dx, y + dy };
+                if (dot.first < 0 || dot.second < 0 || dot.first >= SCREEN_HEIGHT || dot.second >= SCREEN_WIDTH)
+                    continue;
+                if (shape->Inside(Dot{ 1.0 * dot.second, 1.0 * dot.first })) {
+                    buffer[dot.first][dot.second] = color;
+                    toAdd.push_back(dot);
                 }
             }
+        }
+        };
+
+    for (auto d : drawn) {
+        int x = d.first;
+        int y = d.second;//check wheter on perimeter
+        if (xLast != -1 && (x != xLast || yLast == yMin || yLast >= yMaxLast || yLast <= yMinLast)) {
+            checkPos(xLast, yLast);
         }
         if (xLast != x) {
             yMinLast = yMin;
@@ -37,6 +46,13 @@ void PolygonRenderer::IncrementalDraw(uint32_t color) {
         xLast = x;
         yLast = y;
     }
+    checkPos(xLast, yLast);
+    for (int i = yMin + 1; i < yLast; i++) {
+        if (i < yMaxLast && i > yMinLast) {//last line
+            checkPos(xLast, i);
+        }
+    }
+
     for (auto z : toDel) {
         drawn.erase(z);
     }
@@ -45,21 +61,21 @@ void PolygonRenderer::IncrementalDraw(uint32_t color) {
     }
 
 }
-
+/// Redraws full polygon, very slow
 void PolygonRenderer::FullDraw(uint32_t color) {
     for (auto d : drawn) {
-        if (!item->Inside(Dot(d.second, d.first))) {
+        if (!shape->Inside(Dot(d.second, d.first))) {
             buffer[d.first][d.second] = 0;
         }
     }
-    Dot centerNew = item->Center().unLocal(*item->transform);
+    Dot centerNew = shape->Center().unLocal(*shape->transform);
     drawn.clear();
-    int x0 = std::max(0.0, centerNew.x - item->Radius()), x1 = std::min(SCREEN_WIDTH - 1.0, centerNew.x + item->Radius());
-    int y0 = std::max(0.0, centerNew.y - item->Radius()), y1 = std::min(SCREEN_HEIGHT - 1.0, centerNew.y + item->Radius());
+    int x0 = max(0.0, centerNew.x - shape->Radius()), x1 = min(SCREEN_WIDTH - 1.0, centerNew.x + shape->Radius());
+    int y0 = max(0.0, centerNew.y - shape->Radius()), y1 = min(SCREEN_HEIGHT - 1.0, centerNew.y + shape->Radius());
 
     for (int i = x0; i <= x1; i++) {
         for (int j = y0; j <= y1; j++) {
-            if (item->Inside(Dot(i, j))) {
+            if (shape->Inside(Dot(i, j))) {
                 buffer[j][i] = color;
                 drawn.insert({ j, i });
             }
@@ -68,17 +84,30 @@ void PolygonRenderer::FullDraw(uint32_t color) {
 }
 
 void PolygonRenderer::Draw(uint32_t color, bool forceFull) {
-    Dot centerOld = item->Center().unLocal(lastTransform);
-    Dot centerNew = item->Center().unLocal(*item->transform);
-    double shift = (centerNew - centerOld).len();//maximum global shift of any polygon point after last transform change
-    shift += abs((item->transform->rot - lastTransform.rot).angle) * (item->Center().len() + item->Radius());
-
-    if (shift < 1 && !forceFull) {
-        IncrementalDraw(color);
+    if (parent->physicsLocked) {
+        if (!init) {
+            FullDraw(color);
+            init = true;
+        }
     }
     else {
-        FullDraw(color);
+        Dot centerOld = shape->Center().unLocal(lastTransform);
+        Dot centerNew = shape->Center().unLocal(*shape->transform);
+        double shift = (centerNew - centerOld).len();//maximum global shift of any polygon point after last transform change
+        shift += abs((shape->transform->rot - lastTransform.rot).angle) * (shape->Center().len() + shape->Radius());
+        auto timer = std::chrono::system_clock::now();
+        if (shift < 1 && !forceFull && init) {
+            Timer::start("incremental draw");
+            IncrementalDraw(color);
+            Timer::stop("incremental draw");
+        }
+        else {
+            Timer::start("full draw");
+            FullDraw(color);
+            init = true;
+            Timer::stop("full draw");
+        }
     }
     lastColor = color;
-    lastTransform = *item->transform;
+    lastTransform = *shape->transform;
 }

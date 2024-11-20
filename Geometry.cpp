@@ -38,3 +38,32 @@ Dot polygon::Center() const {
     return center;
 
 }
+
+bool inAngle(Dot A, Dot B, Dot C, Dot p) {
+    return ((C - B) % (A - B) > 0) == ((C - B) % (p - B) > 0);
+}
+
+bool polygon::Inside(Dot p) const {//Using binary search over angle
+    int l = 1, r = dots.size() - 1;
+    p = p.local(*transform);
+    if (!inAngle(dots[l], dots[0], dots[r], p) || !inAngle(dots[r], dots[0], dots[l], p))
+        return false;
+    while (r - l > 1) {
+        int m = (l + r) / 2;
+        if (inAngle(dots[l], dots[0], dots[m], p)) {
+            r = m;
+        }
+        else {
+            l = m;
+        }
+    }
+    return inAngle(dots[0], dots[l], dots[r], p);
+}
+
+bool box::Inside(Dot p) const {
+    p = p.local(*transform).local(shift);
+    if (abs(p.x) <= width / 2 && abs(p.y) <= height / 2) {
+        return true;
+    }
+    return false;
+}

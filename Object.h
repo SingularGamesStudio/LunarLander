@@ -1,35 +1,69 @@
 #pragma once
 #include <string>
+#include <set>
 
 #include "Geometry.h"
 #include "Engine.h"
 
 using std::string, std::vector;
 
-struct Object;
+struct Component;
 
-struct Component {
-    Object* parent;
+struct Collision {
+    Dot at;
+    Dot norm;
 };
 
+///Physical object, attributes defined by adding components
 struct Object {
-    Transform transform;
-    string name;
+    string name = "";
+
+    Transform transform{};
+    double rotationSpeed = 0;
+    Dot velocity = dotZero;
+
+    double mass = 1;
+    double inertia = 1000;
     bool physicsLocked = false;
 
-    Dot velocity;
-    Dot massCenter;
-    double mass = 0;
+    std::vector<Collision> collisions{};
+    std::vector<std::pair<Dot, Dot>> forces{};
 
-    vector<Component*> components;
+    std::set<Component*> components{};
 
-    void applyForce(Dot F, Dot where, double dt) {
-        // TODO:
-        velocity += ((F / mass) * dt);
+    Object() {}
+    Object(Transform transform) : transform(transform) {}
+    Object(Transform transform, string name) : transform(transform), name(name) {}
+
+    void applyForce(Dot F, Dot where) {
+        forces.push_back({ F, where });
+    }
+
+    void evalCollisions(double dt);
+
+    void evalForces(double dt);
+};
+
+struct Component {
+    Object* parent = nullptr;
+    Component() {}
+    Component(Object* parent) : parent(parent) {
+        parent->components.insert(this);
+    }
+    virtual ~Component() {
+        parent->components.erase(this);
     }
 };
 
-struct PolyCollider : public Component {
-    polygon* shape;
-    bool draw;
+/// Controlled component can be activated on button press
+struct Controlled {
+    std::vector<char> buttonFilter{};
+    Controlled() {}
+    virtual void activate() = 0;
+    virtual void stop() = 0;
+};
+
+struct Drawable {
+    Drawable() {}
+    virtual void Draw(bool forceFull = false) = 0;
 };
