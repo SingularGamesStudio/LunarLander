@@ -123,12 +123,12 @@ void DrawWinScreen(std::queue<std::pair<PolyCollider*, PolyCollider*>> hits) {
     DrawRect(Layout::WinScreenShift.first, Layout::WinScreenShift.second, SCREEN_HEIGHT - Layout::WinScreenShift.first, SCREEN_WIDTH - Layout::WinScreenShift.second * 2, 0);
     int score = 100;
     string scoreExlp = "Base score: 100\n";
-    score -= global::componentsDestroyed * 10;
-    scoreExlp += std::format("Rocket parts destroyed: -{}x10\n", global::componentsDestroyed);
+    score -= global::componentsDestroyed * 30;
+    scoreExlp += std::format("Rocket parts destroyed: -{}x30\n", global::componentsDestroyed);
     score -= (int)Timer::elapsed("/game");
     scoreExlp += std::format("Time passed: -{}\nLanding:\n", (int)Timer::elapsed("/game"));
     while (!hits.empty()) {
-        auto hit = hits.front();
+        auto hit = hits.front();//TODO:unique
         hits.pop();
         if (hit.first != nullptr && hit.second != nullptr) {
             score += hit.first->score * hit.second->score;

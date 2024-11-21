@@ -13,6 +13,7 @@ struct Component;
 struct Collision {
     Dot at;
     Dot norm;
+    Dot parralelVelocity;
     std::pair<PolyCollider*, PolyCollider* > what;
 };
 

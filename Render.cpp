@@ -7,7 +7,7 @@
 
 using std::max, std::min;
 /// Draws only perimeter of the polygon, shifted by no more than 1 pixel
-void PolygonRenderer::IncrementalDraw(uint32_t color) {
+/*void PolygonRenderer::IncrementalDraw(uint32_t color) {
     std::vector<std::pair<int, int>> toDel{};
     std::vector<std::pair<int, int>> toAdd{};
     int xLast = -1, yLast = -1;
@@ -88,41 +88,35 @@ void PolygonRenderer::FullDraw(uint32_t color) {
             }
         }
     }
-}
+}*/
 
-void drawSegment(Dot a, Dot b, uint32_t color, std::set<std::pair<int, int>>* saveTo) {
+void drawSegment(Dot a, Dot& b, uint32_t color, std::unordered_set<std::pair<int, int>>* saveTo) {
     Dot dir = (b - a);
     double len = dir.len();
     dir = dir / len;
-    Dot cur = a;
     for (int i = 0; i <= len; i++) {
-        int y = (int)(cur.y + 0.5 - (cur.y < 0)), x = (int)(cur.x + 0.5 - (cur.x < 0));
+        int y = (int)(a.y + 0.5 - (a.y < 0)), x = (int)(a.x + 0.5 - (a.x < 0));
         if (y >= 0 && x >= 0 && y < SCREEN_HEIGHT && x < SCREEN_WIDTH) {
             buffer[y][x] = color;
             if (saveTo != nullptr)
                 saveTo->insert({ y, x });
         }
-        cur += dir;
+        a += dir;
     }
 }
 
 /// Redraws full polygon, very slow
 void PolygonRenderer::EdgeDraw(uint32_t color) {
-    for (auto d : drawn) {
+    for (auto& d : drawn) {
         if (buffer[d.first][d.second] == lastColor)
             buffer[d.first][d.second] = 0;
     }
     drawn.clear();
-    Dot next, cur;
+    Dot next, cur = shape->dots[shape->dots.size() - 1].unLocal(parent->transform);
     for (int i = 0; i < shape->dots.size(); i++) {
         next = shape->dots[i].unLocal(parent->transform);
-        if (i == 0) {
-            cur = shape->dots[shape->dots.size() - 1].unLocal(parent->transform);
-        }
-        else {
-            cur = shape->dots[i - 1].unLocal(parent->transform);
-        }
         drawSegment(cur, next, color, &drawn);
+        cur = next;
     }
 }
 
@@ -136,7 +130,7 @@ void PolygonRenderer::Draw(uint32_t color, bool forceFull, bool edgeOnly) {
             EdgeDraw(color);
             Timer::stop("edge draw");
         }
-        else if (parent->physicsLocked) {
+        /*else if (parent->physicsLocked) {
             if (!init) {
                 FullDraw(color);
                 init = true;
@@ -159,7 +153,7 @@ void PolygonRenderer::Draw(uint32_t color, bool forceFull, bool edgeOnly) {
                 init = true;
                 Timer::stop("full draw");
             }
-        }
+        }*/
         lastColor = color;
         lastTransform = *shape->transform;
     }

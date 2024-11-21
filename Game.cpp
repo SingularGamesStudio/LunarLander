@@ -109,7 +109,7 @@ void tickPhysics(float dt) {
     using namespace global;
     for (auto& object : objects) {//gravity
         if (!object->physicsLocked && object->aliveCounter) {
-            object->applyForce(dotUp * 9.8 * object->mass, object->transform.pos);
+            object->applyForce(dotUp * 20 * object->mass, object->transform.pos);
         }
     }
     for (int i = 0; i < colliders.size(); i++) {//find collisions

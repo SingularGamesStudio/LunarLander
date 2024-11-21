@@ -1,26 +1,34 @@
 #include "Components.h"
+#include "Timer.h"
 
 /// Shifts colliders so they do not intersect, applies rule of moments, and saves collisions in object
-void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, double damping, bool second) {
+void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, double floorDamping, double airDamping, bool second) {
     if (a->parent->physicsLocked) {
         std::swap(a, b);//ensure that a is dynamic
         aShift = aShift * -1;
     }
     Line norm = Line(at, at + aShift);
+    Dot aAngular = (at - a->parent->transform.pos).norm() * a->parent->rotationSpeed;
+    Dot bAngular = (at - b->parent->transform.pos).norm() * b->parent->rotationSpeed;
+    Dot parralel = dotZero;
     if (b->parent->physicsLocked) { //dynamic and static objects
         a->parent->transform.pos += aShift;
         if (!second) {
-            Dot aVel = norm.project(a->parent->velocity + at) - at;
+            Dot aVel = norm.project(a->parent->velocity + aAngular + at) - at;
+            Dot parVel = a->parent->velocity + aAngular - aVel;
             a->TakeDamage(aVel.len() * a->mass);
             if (aVel.len() > eps)
-                a->parent->velocity -= aVel * (1 + damping);
+                a->parent->velocity -= aVel * (1 + floorDamping);
+            if (parVel.len() > eps)
+                parralel = parVel / parVel.len();
         }
-        a->parent->collisions.push_back(Collision{ at, aShift , {a, b} });
+        a->parent->collisions.push_back(Collision{ at, aShift , parralel, {a, b} });
     }
     else {//two dynamic objects
         if (!second) {
-            Dot aVel = norm.project(a->parent->velocity + at) - at;
-            Dot bVel = norm.project(b->parent->velocity + at) - at;// абсоллютно упругий удар
+            Dot aVel = norm.project(a->parent->velocity + aAngular + at) - at;
+            Dot bVel = norm.project(b->parent->velocity + bAngular + at) - at;// абсоллютно упругий удар
+            Dot parVel = a->parent->velocity + aAngular - aVel - (b->parent->velocity + bAngular - bVel);
             a->TakeDamage((aVel - bVel).len() * b->mass);
             b->TakeDamage((aVel - bVel).len() * a->mass);
             Dot aVel1 = (aVel * (a->parent->mass - b->parent->mass) + bVel * 2 * b->parent->mass) / (a->parent->mass + b->parent->mass);
@@ -28,20 +36,23 @@ void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, dou
             a->parent->velocity -= aVel;
             b->parent->velocity -= bVel;
             if (aVel1.len() > eps) {
-                a->parent->velocity += aVel1;
+                a->parent->velocity += aVel1 * airDamping;
             }
             if (bVel1.len() > eps) {
-                b->parent->velocity += bVel1;
+                b->parent->velocity += bVel1 * airDamping;
             }
+            if (parVel.len() > eps)
+                parralel = parVel / parVel.len();
         }
         a->parent->transform.pos += aShift / 2;
         b->parent->transform.pos -= aShift / 2;
-        a->parent->collisions.push_back(Collision{ at, aShift , {a, b} });//TODO:трение
-        b->parent->collisions.push_back(Collision{ at, -aShift, {b, a} });
+        a->parent->collisions.push_back(Collision{ at, aShift , parralel, {a, b} });
+        b->parent->collisions.push_back(Collision{ at, -aShift, -parralel,  {b, a} });
     }
 }
 
 void Object::evalForces(double dt) {
+    Timer::start("physics");
     for (std::pair<Dot, Dot>& force : forces) {
         if (force.first.len() < eps)
             continue;
@@ -52,9 +63,11 @@ void Object::evalForces(double dt) {
     }
 
     forces.clear();
+    Timer::stop("physics");
 }
 
 void Object::evalCollisions(double dt) {
+    Timer::start("physics");
     for (Collision& coll : collisions) {
         Line norm = Line(coll.at, coll.at + coll.norm);
         Dot force = dotZero;
@@ -64,10 +77,15 @@ void Object::evalCollisions(double dt) {
         if (force * coll.norm > 0) {
             continue;
         }
+        force = force * coll.norm.len() / 10;
+        if (coll.parralelVelocity.len() > eps) {
+            applyForce(-coll.parralelVelocity * force.len(), coll.at);
+        }
         coll.what.second->parent->applyForce(force, coll.at);
         applyForce(-force, coll.at);
     }
     collisions.clear();
+    Timer::stop("physics");
 }
 
 

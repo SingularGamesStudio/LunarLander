@@ -17,6 +17,8 @@ namespace global {
     extern int rocketChoice;
     extern int levelChoice;
     extern int componentsDestroyed;
+
+
 };
 void Cleanup();
 

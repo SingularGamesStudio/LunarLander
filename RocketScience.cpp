@@ -49,16 +49,17 @@ void Cleanup() {
 Object* BuildRocket(Transform at) {
     using namespace global;
     objects.push_back(new Object(Transform(at), "Rocket"));
-    objects.back()->mass = 10;
-
     auto body = newBoxRenderer(objects.back(), Transform({ 0, 0 }, 0), 50, 100, colors::white);
+    body->setUpGameProperties(2, 200, 7, "Hull");
     drawable.push_back(body);
     colliders.push_back(body);
     auto head = new PolygonRenderer(objects.back(), new Poly(&objects.back()->transform, { {25, -49}, {0, -85}, {-25, -49} }));
+    head->setUpGameProperties(5, 50, 2, "Head");
     head->color = colors::white - 1;
     drawable.push_back(head);
     colliders.push_back(head);
     auto thrusterCollider = new PolygonRenderer(objects.back(), new Poly(&objects.back()->transform, { {25, 75}, {0, 50}, {-25, 75} }));
+    thrusterCollider->setUpGameProperties(1, 100, 1, "Thruster");
     thrusterCollider->color = colors::brown;
     drawable.push_back(thrusterCollider);
     colliders.push_back(thrusterCollider);
@@ -83,24 +84,28 @@ void mapEdges() {
     objects.push_back(new Object(Transform({ 0, 0 }, 0), "leftScreen"));
     objects.back()->physicsLocked = true;
     auto screen = newBoxRenderer(objects.back(), Transform({ -SCREEN_HEIGHT / 2, SCREEN_HEIGHT / 2 }, 0), SCREEN_HEIGHT + 2, SCREEN_HEIGHT, colors::yellow);
+    screen->setUpGameProperties(1, 1000000000, 1, "Screen edge");
     drawable.push_back(screen);
     colliders.push_back(screen);
 
     objects.push_back(new Object(Transform({ 0, 0 }, 0), "rightScreen"));
     objects.back()->physicsLocked = true;
     screen = newBoxRenderer(objects.back(), Transform({ SCREEN_WIDTH + SCREEN_HEIGHT / 2, SCREEN_HEIGHT / 2 }, 0), SCREEN_HEIGHT + 2, SCREEN_HEIGHT, colors::yellow);
+    screen->setUpGameProperties(1, 1000000000, 1, "Screen edge");
     drawable.push_back(screen);
     colliders.push_back(screen);
 
     objects.push_back(new Object(Transform({ 0, 0 }, 0), "bottomScreen"));
     objects.back()->physicsLocked = true;
     screen = newBoxRenderer(objects.back(), Transform({ SCREEN_WIDTH / 2, -SCREEN_WIDTH / 2 }, 0), SCREEN_WIDTH, SCREEN_WIDTH + 2, colors::yellow);
+    screen->setUpGameProperties(10, 1000000000, 1, "Screen top");
     drawable.push_back(screen);
     colliders.push_back(screen);
 
     objects.push_back(new Object(Transform({ 0, 0 }, 0), "bottomScreen"));
     objects.back()->physicsLocked = true;
     screen = newBoxRenderer(objects.back(), Transform({ SCREEN_WIDTH / 2, SCREEN_HEIGHT + SCREEN_WIDTH / 2 }, 0), SCREEN_WIDTH, SCREEN_WIDTH + 2, colors::yellow);
+    screen->setUpGameProperties(1, 1000000000, 1, "Screen edge");
     drawable.push_back(screen);
     colliders.push_back(screen);
 }
@@ -112,11 +117,13 @@ Transform BuildLevel() {
     for (int i = 0; i < 50; i++) {
         objects.push_back(new Object(Transform({ double(rnd() % (SCREEN_WIDTH - 100) + 50), double(rnd() % (SCREEN_HEIGHT / 2)) }, pi / (rnd() % 100) * 200.0), "Box" + std::to_string(i)));
         auto boxRenderer = newBoxRenderer(objects.back(), Transform({ 0, 0 }, 0), 50, 50, rnd() % 255 * 256 + rnd() % 255 + rnd() % 255 * 256 * 256);
+        boxRenderer->setUpGameProperties(2, 600, 1, "Box");
         drawable.push_back(boxRenderer);
         colliders.push_back(boxRenderer);
     }
     objects.push_back(new Object(Transform({ double(rnd() % (SCREEN_WIDTH - 100) + 50), double(rnd() % (SCREEN_HEIGHT / 2)) }, pi / (rnd() % 100) * 200.0), "tri"));
     auto triangleRenderer = new PolygonRenderer(objects.back(), new Poly(&objects.back()->transform, { {100, 100}, {100, 200}, {0, 0} }));
+    triangleRenderer->setUpGameProperties(5, 1200, 2, "Triangle");
     triangleRenderer->color = 255 * 256;
     drawable.push_back(triangleRenderer);
     colliders.push_back(triangleRenderer);

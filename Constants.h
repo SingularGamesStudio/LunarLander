@@ -8,12 +8,25 @@ namespace colors {
     const uint32_t yellow = 0xFFFF00;
 };
 
-const double damageTreshold = 200;
-const double rotWinTreshold = 5;
-const double velWinTreshold = 5;
+const double damageTreshold = 100;
+const double rotWinTreshold = 3;
+const double velWinTreshold = 12;
 
 const int LETTER_H = 8;
 const int LETTER_W = 8;
+
+const unsigned char explosion[5][8] = {
+    {
+        0b00000000,
+        0b00000000,
+        0b00000000,
+        0b00100000,
+        0b00001000,
+        0b00100000,
+        0b00000000,
+        0b00000000,
+    }
+};
 
 const unsigned char letters[128][8] = {
     { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+0000 (nul)

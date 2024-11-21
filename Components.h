@@ -3,6 +3,13 @@
 #include "Windows.h"
 #include<format>
 
+template <>
+struct std::hash<std::pair<int, int>> {
+    inline size_t operator()(const std::pair<int, int>& ptr) const {
+        return ptr.first * ptr.second;
+    }
+};
+
 struct PolyCollider : public Component {
     Poly* shape = nullptr;
 
@@ -31,7 +38,7 @@ struct PolyCollider : public Component {
 
 PolyCollider* newBoxCollider(Object* parent, Transform shift, int w, int h);
 /// Shifts colliders so they do not intersect, applies rule of moments, and saves collisions in object
-void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, double damping = 0.3, bool second = false);
+void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, double floorDamping = 0.2, double airDamping = 0.8, bool second = false);
 /// Shifts colliders so they do not intersect, applies rule of moments, and saves collisions in object
 void resolveCollision(PolyCollider* a, PolyCollider* b, Line norm);
 
@@ -41,16 +48,18 @@ struct PolygonRenderer : PolyCollider, Drawable {
 
     PolygonRenderer() {}
     PolygonRenderer(Object* parent) : PolyCollider(parent) {}
-    PolygonRenderer(Object* parent, Poly* shape) : PolyCollider(parent, shape) {}
+    PolygonRenderer(Object* parent, Poly* shape) : PolyCollider(parent, shape) {
+        drawn.reserve(shape->Radius() * 8);
+    }
 
 protected:
     bool init = false;
     uint32_t lastColor = 1;
     Transform lastTransform{};
-    std::set<std::pair<int, int>> drawn{};
+    std::unordered_set<std::pair<int, int>> drawn{};
 
-    void IncrementalDraw(uint32_t color);
-    void FullDraw(uint32_t color);
+    //void IncrementalDraw(uint32_t color);
+    //void FullDraw(uint32_t color);
     void EdgeDraw(uint32_t color);
 public:
     void Draw(uint32_t color, bool forceFull = false, bool edgeOnly = true);
@@ -58,6 +67,9 @@ public:
         Draw(color, forceFull);
     }
     virtual void Clear() override;
+    void reserve() {
+        drawn.reserve(shape->Radius() * 8);
+    }
 };
 
 PolygonRenderer* newBoxRenderer(Object* parent, Transform shift, int w, int h, uint32_t color);
@@ -73,9 +85,10 @@ public:
     Thruster() {}
     Thruster(Object* parent, PolyCollider* base) : Component(parent), base(base) {}
     Thruster(Object* parent, PolyCollider* base, Dot shift, Dot force) : Component(parent), base(base), shift(shift), force(force) {
-        Poly* poly = new Poly{ &(parent->transform), std::vector<Dot>{shift - force / parent->mass * 2, shift + force.norm() / parent->mass / 3, shift - force.norm() / parent->mass / 3} };
+        Poly* poly = new Poly{ &(parent->transform), std::vector<Dot>{shift - force / 10 * 2, shift + force.norm() / 10 / 3, shift - force.norm() / 10 / 3} };
         visual = PolygonRenderer{ parent };
         visual.shape = poly;
+        visual.reserve();
         visual.color = 0xffa200;
     }
 
@@ -87,3 +100,9 @@ public:
     friend void fixCenter(Object* obj);
 };
 
+struct Explosion {
+    Dot position;
+    int scale;
+    double nextFrame;
+    std::unordered_set<std::pair<int, int>> drawn{};
+};

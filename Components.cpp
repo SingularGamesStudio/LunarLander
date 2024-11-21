@@ -11,6 +11,7 @@ PolyCollider* newBoxCollider(Object* parent, Transform shift, int w, int h) {
 PolygonRenderer* newBoxRenderer(Object* parent, Transform shift, int w, int h, uint32_t color) {
     PolygonRenderer* res = new PolygonRenderer(parent);
     res->shape = new box(&parent->transform, w, h, shift);
+    res->reserve();
     res->color = color;
     return res;
 }
@@ -19,7 +20,7 @@ void PolyCollider::TakeDamage(double dmg) {
     if (hp <= 0)
         return;
     if (dmg >= damageTreshold) {
-        hp -= dmg;
+        hp -= dmg - damageTreshold;
         if (hp <= 0) {
             if (parent->name == "Rocket")
                 global::componentsDestroyed++;

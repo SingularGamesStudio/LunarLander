@@ -8,8 +8,9 @@
 
 using std::min, std::max;
 /// Calculate minimal and maximal positions of projection on axis. Returns two max/min, if <two>=true
-void minMaxProjection(std::vector<Dot> dots, Line axis, std::pair<double, Dot>* min, std::pair<double, Dot>* max, bool two = false) {
-    for (auto dot : dots) {
+void minMaxProjection(std::vector<Dot> dots, int dotsCount, Line axis, std::pair<double, Dot>* min, std::pair<double, Dot>* max, bool two = false) {
+    for (int i = 0; i < dotsCount; i++) {
+        Dot dot = dots[i];
         double projPos = axis.projectLocal(dot);
         if (projPos < min[0].first) {
             if (two) {
@@ -32,10 +33,10 @@ void minMaxProjection(std::vector<Dot> dots, Line axis, std::pair<double, Dot>* 
     }
 }
 /// Check whether exists a separating axis between a and b, normal to <axis>
-double SeparatingAxis(std::vector<Dot>& aDots, std::vector<Dot>& bDots, const Line& axis) {
+double SeparatingAxis(std::vector<Dot>& aDots, int aCount, std::vector<Dot>& bDots, int bCount, const Line& axis) {
     std::pair<double, Dot> aMin = { INFINITY, {} }, aMax = { -INFINITY, {} }, bMin = { INFINITY, {} }, bMax = { -INFINITY, {} };
-    minMaxProjection(aDots, axis, &aMin, &aMax);
-    minMaxProjection(bDots, axis, &bMin, &bMax);
+    minMaxProjection(aDots, aCount, axis, &aMin, &aMax);
+    minMaxProjection(bDots, bCount, axis, &bMin, &bMax);
     if (aMax.first < bMin.first) {
         return -(bMin.first - aMax.first);
     }
@@ -59,8 +60,8 @@ std::pair<double, Line> intersect(const Poly& a, const Poly& b) {  // Using Sepa
     }
     Timer::stop("short collision check");
     Timer::start("long collision check");
-    std::vector<Dot> aDots = std::vector<Dot>(a.dots.size());
-    std::vector<Dot> bDots = std::vector<Dot>(b.dots.size());
+    static std::vector<Dot> aDots = std::vector<Dot>(15);//we do not have more than 15-edge polygons
+    static std::vector<Dot> bDots = std::vector<Dot>(15);
     for (int i = 0; i < a.dots.size(); i++) {
         aDots[i] = a.dots[i].unLocal(*a.transform);
     }
@@ -68,30 +69,26 @@ std::pair<double, Line> intersect(const Poly& a, const Poly& b) {  // Using Sepa
         bDots[i] = b.dots[i].unLocal(*b.transform);
     }
 
-    std::vector<Line> normals{};// we need only to check edges as axes
-    normals.push_back(
-        Line{ aDots[0], aDots[0] + (aDots[0] - aDots.back()).norm() });
-    for (int i = 1; i < aDots.size(); i++) {
-        normals.push_back(
-            Line{ aDots[i], aDots[i] + (aDots[i] - aDots[i - 1]).norm() });
+    static std::vector<Line> normals(30);// we need only to check edges as axes
+    int normalCount = 0;
+    normals[normalCount++] = Line{ aDots[0], aDots[0] + (aDots[0] - aDots.back()).norm() };
+    for (int i = 1; i < a.dots.size(); i++) {
+        normals[normalCount++] = Line{ aDots[i], aDots[i] + (aDots[i] - aDots[i - 1]).norm() };
     }
-    normals.push_back(
-        Line{ bDots[0], bDots[0] + (bDots[0] - bDots.back()).norm() });
-    for (int i = 1; i < bDots.size(); i++) {
-        normals.push_back(
-            Line{ bDots[i], bDots[i] + (bDots[i] - bDots[i - 1]).norm() });
+    normals[normalCount++] = Line{ bDots[0], bDots[0] + (bDots[0] - bDots.back()).norm() };
+    for (int i = 1; i < b.dots.size(); i++) {
+        normals[normalCount++] = Line{ bDots[i], bDots[i] + (bDots[i] - bDots[i - 1]).norm() };
     }
     std::sort(normals.begin(), normals.end(), cmpAngle);  // Only unique axes
-    normals.erase(std::unique(normals.begin(), normals.end(), eqAngle),
-        normals.end());
+    normalCount = std::unique(normals.begin(), normals.end(), eqAngle) - normals.begin();
 
     double minDist = INFINITY;
     Line bestAxis;
-    for (Line& axis : normals) {
-        double cur = SeparatingAxis(aDots, bDots, axis);
+    for (int i = 0; i < normalCount; i++) {
+        double cur = SeparatingAxis(aDots, a.dots.size(), bDots, b.dots.size(), normals[i]);
         if (cur < minDist) {
             minDist = cur;
-            bestAxis = axis;
+            bestAxis = normals[i];
         }
         if (cur < -eps) {
             break; //no intersection
@@ -104,8 +101,8 @@ std::pair<double, Line> intersect(const Poly& a, const Poly& b) {  // Using Sepa
 /// Shifts colliders so they do not intersect, applies rule of moments, and saves collisions in object
 void resolveCollision(PolyCollider* a, PolyCollider* b, Line norm) {
     Timer::start("collision point");
-    std::vector<Dot> aDots = std::vector<Dot>(a->shape->dots.size());
-    std::vector<Dot> bDots = std::vector<Dot>(b->shape->dots.size());
+    static std::vector<Dot> aDots = std::vector<Dot>(15);
+    static std::vector<Dot> bDots = std::vector<Dot>(15);
     for (int i = 0; i < a->shape->dots.size(); i++) {
         aDots[i] = a->shape->dots[i].unLocal(*a->shape->transform);
     }
@@ -113,9 +110,9 @@ void resolveCollision(PolyCollider* a, PolyCollider* b, Line norm) {
         bDots[i] = b->shape->dots[i].unLocal(*b->shape->transform);
     }
     std::pair<double, Dot> aMin[2] = { {INFINITY, {}}, {INFINITY, {}} }, aMax[2] = { { -INFINITY, {} }, { -INFINITY, {} } };
-    minMaxProjection(aDots, norm, aMin, aMax, true);
+    minMaxProjection(aDots, a->shape->dots.size(), norm, aMin, aMax, true);
     std::pair<double, Dot> bMin[2] = { {INFINITY, {}}, {INFINITY, {}} }, bMax[2] = { { -INFINITY, {} }, { -INFINITY, {} } };
-    minMaxProjection(bDots, norm, bMin, bMax, true);
+    minMaxProjection(bDots, b->shape->dots.size(), norm, bMin, bMax, true);
     if (aMax[0].first < bMin[0].first || bMax[0].first < aMin[0].first)
         return; //no collision
     if (aMax[0].first - bMin[0].first < bMax[0].first - aMin[0].first) {
@@ -136,7 +133,7 @@ void resolveCollision(PolyCollider* a, PolyCollider* b, Line norm) {
     else {//collision of edges, replaced by two half-collisions at end points of the intersection
         std::vector<Dot>dots = { aMin[0].second, aMin[1].second, bMax[0].second, bMax[1].second };
         std::pair<double, Dot> Min[2] = { {INFINITY, {}}, {INFINITY, {}} }, Max[2] = { { -INFINITY, {} }, { -INFINITY, {} } };
-        minMaxProjection(dots, norm.norm(), Min, Max, true);
+        minMaxProjection(dots, 4, norm.norm(), Min, Max, true);
         _resolveCollision(a, b, aShift / 2, Min[1].second);
         _resolveCollision(a, b, aShift / 2, Max[1].second, true);
     }
