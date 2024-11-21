@@ -11,17 +11,20 @@ void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, dou
         a->parent->transform.pos += aShift;
         if (!second) {
             Dot aVel = norm.project(a->parent->velocity + at) - at;
+            a->TakeDamage(aVel.len() * a->mass);
             if (aVel.len() > eps)
                 a->parent->velocity -= aVel * (1 + damping);
         }
-        a->parent->collisions.push_back(Collision{ at, aShift , b });
+        a->parent->collisions.push_back(Collision{ at, aShift , {a, b} });
     }
     else {//two dynamic objects
         if (!second) {
             Dot aVel = norm.project(a->parent->velocity + at) - at;
             Dot bVel = norm.project(b->parent->velocity + at) - at;// абсоллютно упругий удар
-            Dot aVel1 = (aVel * (a->parent->mass - b->parent->mass) + bVel * 2 * b->parent->mass) / (a->parent->mass + b->parent->mass) * damping;
-            Dot bVel1 = (bVel * (b->parent->mass - a->parent->mass) + aVel * 2 * a->parent->mass) / (a->parent->mass + b->parent->mass) * damping;
+            a->TakeDamage((aVel - bVel).len() * b->mass);
+            b->TakeDamage((aVel - bVel).len() * a->mass);
+            Dot aVel1 = (aVel * (a->parent->mass - b->parent->mass) + bVel * 2 * b->parent->mass) / (a->parent->mass + b->parent->mass);
+            Dot bVel1 = (bVel * (b->parent->mass - a->parent->mass) + aVel * 2 * a->parent->mass) / (a->parent->mass + b->parent->mass);
             a->parent->velocity -= aVel;
             b->parent->velocity -= bVel;
             if (aVel1.len() > eps) {
@@ -33,8 +36,8 @@ void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, dou
         }
         a->parent->transform.pos += aShift / 2;
         b->parent->transform.pos -= aShift / 2;
-        a->parent->collisions.push_back(Collision{ at, aShift , b });//TODO:only add collision if bounce is small enough
-        b->parent->collisions.push_back(Collision{ at, -aShift, a });
+        a->parent->collisions.push_back(Collision{ at, aShift , {a, b} });//TODO:трение
+        b->parent->collisions.push_back(Collision{ at, -aShift, {b, a} });
     }
 }
 
@@ -61,8 +64,62 @@ void Object::evalCollisions(double dt) {
         if (force * coll.norm > 0) {
             continue;
         }
-        coll.hit->parent->applyForce(force, coll.at);
+        coll.what.second->parent->applyForce(force, coll.at);
         applyForce(-force, coll.at);
     }
     collisions.clear();
+}
+
+
+
+//calculates center of mass, inertia, and mass
+void fixCenter(Object* obj) {
+    int colliders = 0;
+    double mass = 0;
+    Dot massCenter = dotZero;
+    for (auto c : obj->components) {
+        auto coll = dynamic_cast<PolyCollider*>(c);
+        if (coll != NULL) {
+            if (coll->hp > 0) {
+                colliders++;
+                mass += coll->mass;
+                double pointMass = coll->mass / coll->shape->dots.size();
+                for (Dot dot : coll->shape->dots) {
+                    massCenter += dot * pointMass;
+                }
+            }
+        }
+    }
+    obj->aliveCounter = colliders;
+    if (colliders == 0) {
+        return;
+    }
+    massCenter = massCenter / mass;
+    for (auto c : obj->components) {
+        if (dynamic_cast<PolyCollider*>(c) != NULL) {
+            auto coll = dynamic_cast<PolyCollider*>(c);
+            coll->shape->resetCache();
+            for (Dot& dot : coll->shape->dots) {
+                dot -= massCenter;
+            }
+            if (dynamic_cast<box*>(coll->shape) != NULL) {
+                dynamic_cast<box*>(coll->shape)->shift.pos = dotZero;
+            }
+        }
+        if (dynamic_cast<Thruster*>(c) != NULL) {
+            auto coll = dynamic_cast<Thruster*>(c);
+            coll->visual.shape->resetCache();
+            coll->shift -= massCenter;
+            for (Dot& dot : coll->visual.shape->dots) {
+                dot -= massCenter;
+            }
+            if (dynamic_cast<box*>(coll->visual.shape) != NULL) {
+                dynamic_cast<box*>(coll->visual.shape)->shift.pos = dotZero;
+            }
+        }
+    }
+    obj->transform.pos += massCenter;
+    obj->mass = mass;
+    double r = getRadius(obj);
+    obj->inertia = mass * r * r;
 }

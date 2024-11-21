@@ -51,7 +51,7 @@ bool eqAngle(const Line& a, const Line& b) {
 }
 
 /// Depth of intersection (negative if none), and normal line
-std::pair<double, Line> intersect(const polygon& a, const polygon& b) {  // Using Separating Axis Theorem
+std::pair<double, Line> intersect(const Poly& a, const Poly& b) {  // Using Separating Axis Theorem
     Timer::start("short collision check");
     if (a.Radius() + b.Radius() < (a.Center().unLocal(*a.transform) - b.Center().unLocal(*b.transform)).len()) {
         Timer::stop("short collision check");//objects are too far
@@ -143,3 +143,14 @@ void resolveCollision(PolyCollider* a, PolyCollider* b, Line norm) {
     Timer::stop("physics");
 }
 
+double getRadius(Object* obj) {
+    double r = 0;
+    for (auto c : obj->components) {
+        if (dynamic_cast<PolyCollider*>(c) != NULL) {
+            for (Dot dot : dynamic_cast<PolyCollider*>(c)->shape->dots) {
+                r = max(r, dot.len());
+            }
+        }
+    }
+    return r;
+}

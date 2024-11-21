@@ -8,6 +8,10 @@ namespace colors {
     const uint32_t yellow = 0xFFFF00;
 };
 
+const double damageTreshold = 200;
+const double rotWinTreshold = 5;
+const double velWinTreshold = 5;
+
 const int LETTER_H = 8;
 const int LETTER_W = 8;
 

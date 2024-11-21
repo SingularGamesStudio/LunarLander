@@ -141,12 +141,12 @@ struct Transform {
     Transform(const Dot& pos, const Rot& rot) : pos(pos), rot(rot) {}
 };
 
-struct polygon {
+struct Poly {
     Transform* transform;
     std::vector<Dot> dots;
 
-    polygon() : transform(), dots() {}
-    polygon(Transform* transform, std::vector<Dot> dots)
+    Poly() : transform(), dots() {}
+    Poly(Transform* transform, std::vector<Dot> dots)
         : transform(transform), dots(dots) {
     }
 
@@ -158,9 +158,13 @@ protected:// used for collider and draw area estimation
 public:
     double Radius() const;
     Dot Center() const;
+    void resetCache() {
+        center = { 0, 0 };
+        r = -1;
+    }
 };
 
-struct box : public polygon {
+struct box : public Poly {
     double width, height;
     Transform shift;
 
@@ -177,4 +181,4 @@ struct box : public polygon {
     virtual bool Inside(Dot p) const override;
 };
 /// Depth of intersection (negative if none), and normal line
-std::pair<double, Line> intersect(const polygon& a, const polygon& b);
+std::pair<double, Line> intersect(const Poly& a, const Poly& b);

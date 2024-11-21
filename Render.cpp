@@ -7,7 +7,7 @@
 
 using std::max, std::min;
 /// Draws only perimeter of the polygon, shifted by no more than 1 pixel
-void PolygonRenderer::IncrementalDraw(uint32_t color) {//TODO:rewrite
+void PolygonRenderer::IncrementalDraw(uint32_t color) {
     std::vector<std::pair<int, int>> toDel{};
     std::vector<std::pair<int, int>> toAdd{};
     int xLast = -1, yLast = -1;
@@ -127,36 +127,42 @@ void PolygonRenderer::EdgeDraw(uint32_t color) {
 }
 
 void PolygonRenderer::Draw(uint32_t color, bool forceFull, bool edgeOnly) {
-    if (edgeOnly) {
-        Timer::start("edge draw");
-        EdgeDraw(color);
-        Timer::stop("edge draw");
-    } else if (parent->physicsLocked) {
-        if (!init) {
-            FullDraw(color);
-            init = true;
-        }
+    if (hp <= 0) {
+        Clear();
     }
     else {
-        Dot centerOld = shape->Center().unLocal(lastTransform);
-        Dot centerNew = shape->Center().unLocal(*shape->transform);
-        double shift = (centerNew - centerOld).len();//maximum global shift of any polygon point after last transform change
-        shift += abs((shape->transform->rot - lastTransform.rot).angle) * (shape->Center().len() + shape->Radius());
-        auto timer = std::chrono::system_clock::now();
-        if (shift < 1 && !forceFull && init) {
-            Timer::start("incremental draw");
-            IncrementalDraw(color);
-            Timer::stop("incremental draw");
+        if (edgeOnly) {
+            Timer::start("edge draw");
+            EdgeDraw(color);
+            Timer::stop("edge draw");
+        }
+        else if (parent->physicsLocked) {
+            if (!init) {
+                FullDraw(color);
+                init = true;
+            }
         }
         else {
-            Timer::start("full draw");
-            FullDraw(color);
-            init = true;
-            Timer::stop("full draw");
+            Dot centerOld = shape->Center().unLocal(lastTransform);
+            Dot centerNew = shape->Center().unLocal(*shape->transform);
+            double shift = (centerNew - centerOld).len();//maximum global shift of any polygon point after last transform change
+            shift += abs((shape->transform->rot - lastTransform.rot).angle) * (shape->Center().len() + shape->Radius());
+            auto timer = std::chrono::system_clock::now();
+            if (shift < 1 && !forceFull && init) {
+                Timer::start("incremental draw");
+                IncrementalDraw(color);
+                Timer::stop("incremental draw");
+            }
+            else {
+                Timer::start("full draw");
+                FullDraw(color);
+                init = true;
+                Timer::stop("full draw");
+            }
         }
+        lastColor = color;
+        lastTransform = *shape->transform;
     }
-    lastColor = color;
-    lastTransform = *shape->transform;
 }
 
 void PolygonRenderer::Clear() {
@@ -166,13 +172,4 @@ void PolygonRenderer::Clear() {
     }
     init = false;
     drawn.clear();
-}
-
-void DrawDebugLine(Line l) {
-    for (int i = 0; i < SCREEN_HEIGHT; i++) {
-        Dot dot = l.get(i);
-        if (dot.x >= 0 && dot.y >= 0 && dot.x < SCREEN_WIDTH && dot.y < SCREEN_HEIGHT) {
-            buffer[(int)dot.y][(int)dot.x] = 255 * 256 * 256 + 255 * 256 + 255;
-        }
-    }
 }

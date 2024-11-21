@@ -104,7 +104,61 @@ void ClearMenu() {
     }
 }
 
+void DrawRect(int y0, int x0, int h, int w, uint32_t color) {
+    for (int i = y0; i < y0 + h; i++) {
+        for (int j = x0; j < x0 + w; j++) {
+            buffer[i][j] = color;
+        }
+    }
+}
+
+namespace Layout {
+    const std::pair<int, int> WinScreenShift = { 200, 200 };
+    const std::pair<int, int> EndTitlePos = { 250, 250 };
+    const std::pair<int, int> EndStatsPos = { 400, 300 };
+}
+
+void DrawWinScreen(std::queue<std::pair<PolyCollider*, PolyCollider*>> hits) {
+    global::state = "Victory";
+    DrawRect(Layout::WinScreenShift.first, Layout::WinScreenShift.second, SCREEN_HEIGHT - Layout::WinScreenShift.first, SCREEN_WIDTH - Layout::WinScreenShift.second * 2, 0);
+    int score = 100;
+    string scoreExlp = "Base score: 100\n";
+    score -= global::componentsDestroyed * 10;
+    scoreExlp += std::format("Rocket parts destroyed: -{}x10\n", global::componentsDestroyed);
+    score -= (int)Timer::elapsed("/game");
+    scoreExlp += std::format("Time passed: -{}\nLanding:\n", (int)Timer::elapsed("/game"));
+    while (!hits.empty()) {
+        auto hit = hits.front();
+        hits.pop();
+        if (hit.first != nullptr && hit.second != nullptr) {
+            score += hit.first->score * hit.second->score;
+            scoreExlp += std::format("{}x{}: +{}x{}\n", hit.first->name, hit.second->name, hit.first->score, hit.second->score);
+        }
+    }
+    scoreExlp += "\n      (space to exit)";
+    UI::start("end", Layout::EndTitlePos, 8);
+    UI::write("end", std::format("VICTORY!\nSCORE:{}", score), colors::white);
+    UI::write("stats", "", colors::white);
+    UI::start("stats", Layout::EndStatsPos, 1);
+    UI::write("stats", scoreExlp, colors::white);
+}
+
+void DrawLoseScreen() {
+    global::state = "Victory";
+    DrawRect(Layout::WinScreenShift.first, Layout::WinScreenShift.second, SCREEN_HEIGHT - Layout::WinScreenShift.first, SCREEN_WIDTH - Layout::WinScreenShift.second * 2, 0);
+    string scoreExlp = "\n\n\n\n\n\n          (space to exit)";
+    UI::start("end", Layout::EndTitlePos, 8);
+    UI::write("end", " DEFEAT!\n ROCKET\nDESTROYED", colors::white);
+    UI::write("stats", "", colors::white);
+    UI::start("stats", Layout::EndStatsPos, 1);
+    UI::write("stats", scoreExlp, colors::white);
+}
+
 void RocketState(Object* rocket) {
+    if (rocket->aliveCounter <= 0) {
+        DrawLoseScreen();
+        return;
+    }
     bool done = false;
     for (Controlled* cont : global::controls) {
         if (cont->active) {
@@ -114,23 +168,36 @@ void RocketState(Object* rocket) {
             break;
         }
     }
-    static std::queue<bool> onAir = {};
+    static std::queue<int> onAir = {};
     static int onAirCount = 0;
-    static std::vector<Collision> hits;//TODO:
+    static std::queue<std::pair<PolyCollider*, PolyCollider*>> hits;
     if (onAir.size() > 9) {
-        if (onAir.front())
-            onAirCount--;
+        if (onAir.front() != 0) {
+            for (int i = 0; i < onAir.front(); i++) {
+                hits.pop();
+            }
+        }
+        else onAirCount--;
         onAir.pop();
     }
-    onAir.push(rocket->collisions.empty());
-    if (onAir.back()) {
+    onAir.push(rocket->collisions.size());
+    if (onAir.back() == 0) {
         onAirCount++;
     }
     else {
-        hits = rocket->collisions;
+        for (auto& coll : rocket->collisions) {
+            hits.push(coll.what);
+            if (coll.what.first == nullptr || coll.what.second == nullptr)
+                continue;
+            if (!done && coll.what.first->score * coll.what.second->score == 0) {
+                Timer::start("/land");
+                UI::write("rocket state", "Unsuitable terrain for landing", colors::white);
+                done = true;
+            }
+        }
     }
     if (!done) {
-        if (rocket->velocity.len() > 5 || abs(rocket->rotationSpeed) > 5) {
+        if (rocket->velocity.len() > velWinTreshold || abs(rocket->rotationSpeed) > rotWinTreshold) {
             Timer::start("/land");
             UI::write("rocket state", "Rocket unstable", colors::white);
             return;
@@ -140,24 +207,12 @@ void RocketState(Object* rocket) {
             UI::write("rocket state", "Rocket in the air", colors::white);
             return;
         }
-        int score = 0;
-        for (auto& coll : hits) {
-            if (coll.hit == nullptr)
-                continue;
-            if (coll.hit->score == 0) {
-                Timer::start("/land");
-                UI::write("rocket state", "Unsuitable terrain for landing", colors::white);
-                return;
-            }
-            else {
-                score += coll.hit->score;
-            }
-        }
-        if (Timer::elapsed("/land") < 5) {
+
+        if (Timer::elapsed("/land") < 3) {
             UI::write("rocket state", std::format("LANDING COMMENCING: {:.3f}", 5 - Timer::elapsed("/land")), colors::white);
         }
         else {
-            UI::write("rocket state", std::format("ROCKET LANDED, SCORE: {}", score), colors::white);
+            DrawWinScreen(hits);
         }
     }
 }

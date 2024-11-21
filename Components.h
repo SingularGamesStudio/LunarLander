@@ -4,18 +4,29 @@
 #include<format>
 
 struct PolyCollider : public Component {
-    polygon* shape = nullptr;
+    Poly* shape = nullptr;
 
-    //the collider has a score, if the rocket lands on it, the score is equal to multiplication of the contacting colliders.
-    int score = 1;
+    int score = 1;//the collider has a score, if the rocket lands on it, the score is equal to multiplication of the contacting colliders.
+    string name = "";//for scoring purposes
+    int hp = 1;
+    double mass = 1;
 
     PolyCollider() {}
     PolyCollider(Object* parent) : Component(parent) {}
-    PolyCollider(Object* parent, polygon* shape) : shape(shape), Component(parent) {}
+    PolyCollider(Object* parent, Poly* shape) : shape(shape), Component(parent) {}
+
+    void setUpGameProperties(int score, int hp, double mass, const string& name) {
+        this->score = score;
+        this->hp = hp;
+        this->mass = mass;
+        this->name = name;
+    }
 
     virtual ~PolyCollider() {
         delete shape;
     }
+
+    void TakeDamage(double dmg);
 };
 
 PolyCollider* newBoxCollider(Object* parent, Transform shift, int w, int h);
@@ -30,7 +41,7 @@ struct PolygonRenderer : PolyCollider, Drawable {
 
     PolygonRenderer() {}
     PolygonRenderer(Object* parent) : PolyCollider(parent) {}
-    PolygonRenderer(Object* parent, polygon* shape) : PolyCollider(parent, shape) {}
+    PolygonRenderer(Object* parent, Poly* shape) : PolyCollider(parent, shape) {}
 
 protected:
     bool init = false;
@@ -42,7 +53,7 @@ protected:
     void FullDraw(uint32_t color);
     void EdgeDraw(uint32_t color);
 public:
-    void Draw(uint32_t color, bool forceFull = false, bool edgeOnly=true);
+    void Draw(uint32_t color, bool forceFull = false, bool edgeOnly = true);
     virtual void Draw(bool forceFull = false) override {
         Draw(color, forceFull);
     }
@@ -55,13 +66,14 @@ PolygonRenderer* newBoxRenderer(Object* parent, Transform shift, int w, int h, u
 struct Thruster : public Controlled, Drawable, Component {
     Dot shift;
     Dot force;
+    PolyCollider* base = nullptr;
 protected:
     PolygonRenderer visual;
 public:
     Thruster() {}
-    Thruster(Object* parent) : Component(parent) {}
-    Thruster(Object* parent, Dot shift, Dot force) : Component(parent), shift(shift), force(force) {
-        polygon* poly = new polygon{ &(parent->transform), std::vector<Dot>{shift - force/parent->mass * 2, shift + force.norm() / parent->mass / 3, shift - force.norm() / parent->mass / 3} };
+    Thruster(Object* parent, PolyCollider* base) : Component(parent), base(base) {}
+    Thruster(Object* parent, PolyCollider* base, Dot shift, Dot force) : Component(parent), base(base), shift(shift), force(force) {
+        Poly* poly = new Poly{ &(parent->transform), std::vector<Dot>{shift - force / parent->mass * 2, shift + force.norm() / parent->mass / 3, shift - force.norm() / parent->mass / 3} };
         visual = PolygonRenderer{ parent };
         visual.shape = poly;
         visual.color = 0xffa200;
@@ -71,5 +83,7 @@ public:
     virtual void stop() override;
     virtual void Draw(bool forceFull = false) override;
     virtual void Clear() override;
+
+    friend void fixCenter(Object* obj);
 };
 

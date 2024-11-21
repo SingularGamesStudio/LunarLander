@@ -19,7 +19,7 @@ Dot Dot::unLocal(const Transform& base) const {
     return rotated(base.rot) + base.pos;
 }
 
-double polygon::Radius() const {
+double Poly::Radius() const {
     if (r < 0) {
         for (auto& dot : dots) {
             r = std::max(r, (dot - Center()).len());
@@ -28,7 +28,7 @@ double polygon::Radius() const {
     return r;
 }
 
-Dot polygon::Center() const {
+Dot Poly::Center() const {
     if (center.len() < eps) {
         for (auto& dot : dots) {
             center += dot;
@@ -43,7 +43,7 @@ bool inAngle(Dot A, Dot B, Dot C, Dot p) {
     return ((C - B) % (A - B) > 0) == ((C - B) % (p - B) > 0);
 }
 
-bool polygon::Inside(Dot p) const {//Using binary search over angle
+bool Poly::Inside(Dot p) const {//Using binary search over angle
     int l = 1, r = dots.size() - 1;
     p = p.local(*transform);
     if (!inAngle(dots[l], dots[0], dots[r], p) || !inAngle(dots[r], dots[0], dots[l], p))

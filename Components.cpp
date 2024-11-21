@@ -1,4 +1,6 @@
 #include "Components.h"
+#include "Constants.h"
+#include "RocketScience.h"
 
 PolyCollider* newBoxCollider(Object* parent, Transform shift, int w, int h) {
     PolyCollider* res = new PolyCollider(parent);
@@ -13,14 +15,34 @@ PolygonRenderer* newBoxRenderer(Object* parent, Transform shift, int w, int h, u
     return res;
 }
 
+void PolyCollider::TakeDamage(double dmg) {
+    if (hp <= 0)
+        return;
+    if (dmg >= damageTreshold) {
+        hp -= dmg;
+        if (hp <= 0) {
+            if (parent->name == "Rocket")
+                global::componentsDestroyed++;
+            //TODO:explosion
+            fixCenter(parent);
+        }
+    }
+}
+
 void Thruster::activate() {
-    parent->applyForce(force.rotated(parent->transform.rot), shift.unLocal(parent->transform));
-    active = true;
+    if (base->hp > 0) {
+        parent->applyForce(force.rotated(parent->transform.rot), shift.unLocal(parent->transform));
+        active = true;
+    }
+    else
+        stop();
 }
 
 void Thruster::stop() {
-    active = false;
-    Clear();
+    if (active) {
+        active = false;
+        Clear();
+    }
 }
 
 void Thruster::Clear() {

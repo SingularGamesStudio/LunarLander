@@ -4,6 +4,7 @@
 #include "Object.h"
 #include<unordered_map>
 #include<string>
+#include<queue>
 
 using std::string;
 
@@ -25,6 +26,10 @@ void DrawMenu();
 
 void ClearMenu();
 
-void RocketState(Object* rocket);
+void DrawRect(int y0, int x0, int h, int w, uint32_t color);
 
-void DrawDebugLine(Line l);
+void DrawWinScreen(std::queue<std::pair<PolyCollider*, PolyCollider*>> hits);
+
+void DrawLoseScreen();
+
+void RocketState(Object* rocket);

@@ -13,12 +13,15 @@ struct Component;
 struct Collision {
     Dot at;
     Dot norm;
-    PolyCollider* hit;
+    std::pair<PolyCollider*, PolyCollider* > what;
 };
 
 ///Physical object, attributes defined by adding components
 struct Object {
     string name = "";
+
+    //number of active colliders
+    int aliveCounter = 1;
 
     Transform transform{};
     double rotationSpeed = 0;
@@ -71,3 +74,7 @@ struct Drawable {
     virtual void Draw(bool forceFull = false) = 0;
     virtual void Clear() = 0;
 };
+
+double getRadius(Object* obj);
+
+void fixCenter(Object* obj);

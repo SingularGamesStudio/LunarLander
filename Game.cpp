@@ -20,57 +20,28 @@
 //  'black' is_window_active() - returns true if window is active
 //  schedule_quit_game() - quit game after act()
 
-double getRadius(Object* obj) {
-    double r = 0;
-    for (auto c : obj->components) {
-        if (dynamic_cast<PolyCollider*>(c) != NULL) {
-            for (Dot dot : dynamic_cast<PolyCollider*>(c)->shape->dots) {
-                r = max(r, dot.len());
-            }
-        }
-    }
-    return r;
-}
 
-void fixCenters() {
-    for (auto obj : global::objects) {
-        int cnt = 0;
-        Dot massCenter = dotZero;
-        for (auto c : obj->components) {
-            if (dynamic_cast<PolyCollider*>(c) != NULL) {
-                for (Dot dot : dynamic_cast<PolyCollider*>(c)->shape->dots) {
-                    massCenter += dot;
-                    cnt++;
-                }
-            }
-        }
-        massCenter = massCenter / cnt;
-        for (auto c : obj->components) {
-            if (dynamic_cast<PolyCollider*>(c) != NULL) {
-                auto coll = dynamic_cast<PolyCollider*>(c);
-                for (Dot& dot : coll->shape->dots) {
-                    dot -= massCenter;
-                }
-                if (dynamic_cast<box*>(coll->shape) != NULL) {
-                    dynamic_cast<box*>(coll->shape)->shift.pos = dotZero;
-                }
-            }
-        }
-        obj->transform.pos += massCenter;
-        double r = getRadius(obj);
-        obj->inertia = obj->mass * r * r;
-    }
-}
 
 void startGame() {
     ClearMenu();
     Cleanup();
     auto rocketPos = global::levelBuilders[global::levelChoice].second();
     global::rocketBuilders[global::rocketChoice].second(rocketPos);
-    fixCenters();
+    for (auto obj : global::objects) {
+        fixCenter(obj);
+    }
     UI::start("rocket state", { 20, 500 }, 2);
+    UI::start("tip", { 10, 10 }, 1);
     Timer::start("/land");
+    Timer::start("/game");
+    global::componentsDestroyed = 0;
     global::state = "Game";
+}
+
+void menu() {
+    Cleanup();
+    DrawRect(0, 0, SCREEN_HEIGHT, SCREEN_WIDTH, 0);
+    global::state = "Menu";
 }
 
 void evalControls(float dt) {
@@ -121,18 +92,32 @@ void evalControls(float dt) {
             Timer::start("/space");
         }
     }
+    else {
+        if (pressed.contains('A')) {
+            menu();
+        }
+    }
+    if (global::state == "Victory") {
+        if (pressed.contains(VK_SPACE) && Timer::elapsed("/space") > 0.3) {
+            menu();
+            Timer::start("/space");
+        }
+    }
 }
 
 void tickPhysics(float dt) {
     using namespace global;
     for (auto& object : objects) {//gravity
-        if (!object->physicsLocked) {
+        if (!object->physicsLocked && object->aliveCounter) {
             object->applyForce(dotUp * 9.8 * object->mass, object->transform.pos);
         }
     }
     for (int i = 0; i < colliders.size(); i++) {//find collisions
         for (int j = i + 1; j < colliders.size(); j++) {
-            if (colliders[i]->parent->physicsLocked && colliders[j]->parent->physicsLocked || colliders[i]->parent == colliders[j]->parent) {
+            if (colliders[i]->parent->physicsLocked && colliders[j]->parent->physicsLocked ||
+                colliders[i]->parent == colliders[j]->parent ||
+                colliders[i]->hp <= 0 || colliders[j]->hp <= 0
+                ) {
                 continue;
             }
             auto inter = intersect(*colliders[i]->shape, *colliders[j]->shape);
@@ -145,17 +130,17 @@ void tickPhysics(float dt) {
         if (object->name == "Rocket") {//check win condition
             RocketState(object);
         }
-        if (!object->physicsLocked) {//apply collisions
+        if (!object->physicsLocked && object->aliveCounter) {//apply collisions
             object->evalCollisions(dt);
         }
     }
     for (auto& object : objects) {//change speed
-        if (!object->physicsLocked) {
+        if (!object->physicsLocked && object->aliveCounter) {
             object->evalForces(dt);
         }
     }
     for (auto& object : objects) {//apply speed
-        if (!object->physicsLocked) {
+        if (!object->physicsLocked && object->aliveCounter) {
             object->transform.pos += object->velocity * dt;
             object->transform.rot += object->rotationSpeed * dt;
         }
@@ -192,8 +177,13 @@ void act(float dt) {
 /// (8 bits per R, G, B)
 void draw() {
     if (!is_window_active()) return;
-    for (auto& renderer : global::drawable) {
-        renderer->Draw();
+    if (global::state != "Victory") {
+        for (auto& renderer : global::drawable) {
+            renderer->Draw();
+        }
+    }
+    if (global::state == "Game") {
+        UI::write("tip", "Arrow keys to move\n<A> to exit to menu\n<ESC> to exit", colors::white);
     }
     if (global::state == "Menu") {
         DrawMenu();
