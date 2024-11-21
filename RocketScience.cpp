@@ -48,7 +48,7 @@ void Cleanup() {
 Object* BuildRocket(Transform at) {
     using namespace global;
     objects.push_back(new Object(Transform(at), "Rocket"));
-    objects.back()->mass = 1;
+    objects.back()->mass = 10;
 
     auto body = newBoxRenderer(objects.back(), Transform({ 0, 0 }, 0), 50, 100, colors::white);
     drawable.push_back(body);
@@ -62,15 +62,15 @@ Object* BuildRocket(Transform at) {
     drawable.push_back(thrusterCollider);
     colliders.push_back(thrusterCollider);
 
-    auto primaryThruster = new Thruster(objects.back(), { 0, 75 }, { 0, -50 });
+    auto primaryThruster = new Thruster(objects.back(), { 0, 75 }, { 0, -500 });
     primaryThruster->buttonFilter = { VK_UP };
     controls.push_back(primaryThruster);
     drawable.push_back(primaryThruster);
-    auto rightThruster = new Thruster(objects.back(), { 25, -15 }, { -5, 0 });
+    auto rightThruster = new Thruster(objects.back(), { 25, -15 }, { -50, 0 });
     rightThruster->buttonFilter = { VK_LEFT };
     controls.push_back(rightThruster);
     drawable.push_back(rightThruster);
-    auto leftThruster = new Thruster(objects.back(), { -25, -15 }, { 5, 0 });
+    auto leftThruster = new Thruster(objects.back(), { -25, -15 }, { 50, 0 });
     leftThruster->buttonFilter = { VK_RIGHT };
     controls.push_back(leftThruster);
     drawable.push_back(leftThruster);
@@ -84,7 +84,7 @@ Transform BuildLevel() {
     auto floorRenderer = newBoxRenderer(objects.back(), Transform({ SCREEN_WIDTH / 2, SCREEN_HEIGHT * 7 / 8 }, 0), SCREEN_WIDTH, SCREEN_HEIGHT / 4, 255);
     drawable.push_back(floorRenderer);
     colliders.push_back(floorRenderer);
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 50; i++) {
         objects.push_back(new Object(Transform({ double(rnd() % (SCREEN_WIDTH - 100) + 50), double(rnd() % (SCREEN_HEIGHT / 2)) }, pi / (rnd() % 100) * 200.0), "Box" + std::to_string(i)));
         auto boxRenderer = newBoxRenderer(objects.back(), Transform({ 0, 0 }, 0), 50, 50, rnd() % 255 * 256 + rnd() % 255 + rnd() % 255 * 256 * 256);
         drawable.push_back(boxRenderer);

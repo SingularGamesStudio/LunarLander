@@ -40,8 +40,9 @@ protected:
 
     void IncrementalDraw(uint32_t color);
     void FullDraw(uint32_t color);
+    void EdgeDraw(uint32_t color);
 public:
-    void Draw(uint32_t color, bool forceFull = false);
+    void Draw(uint32_t color, bool forceFull = false, bool edgeOnly=true);
     virtual void Draw(bool forceFull = false) override {
         Draw(color, forceFull);
     }
@@ -60,7 +61,7 @@ public:
     Thruster() {}
     Thruster(Object* parent) : Component(parent) {}
     Thruster(Object* parent, Dot shift, Dot force) : Component(parent), shift(shift), force(force) {
-        polygon* poly = new polygon{ &(parent->transform), std::vector<Dot>{shift - force * 2, shift + force.norm() / 3, shift - force.norm() / 3} };
+        polygon* poly = new polygon{ &(parent->transform), std::vector<Dot>{shift - force/parent->mass * 2, shift + force.norm() / parent->mass / 3, shift - force.norm() / parent->mass / 3} };
         visual = PolygonRenderer{ parent };
         visual.shape = poly;
         visual.color = 0xffa200;

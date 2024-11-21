@@ -161,12 +161,3 @@ void RocketState(Object* rocket) {
         }
     }
 }
-
-void DrawDebugLine(Line l) {
-    for (int i = 0; i < SCREEN_HEIGHT; i++) {
-        Dot dot = l.get(i);
-        if (dot.x >= 0 && dot.y >= 0 && dot.x < SCREEN_WIDTH && dot.y < SCREEN_HEIGHT) {
-            buffer[(int)dot.y][(int)dot.x] = 255 * 256 * 256 + 255 * 256 + 255;
-        }
-    }
-}

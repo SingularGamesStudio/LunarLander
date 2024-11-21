@@ -90,8 +90,48 @@ void PolygonRenderer::FullDraw(uint32_t color) {
     }
 }
 
-void PolygonRenderer::Draw(uint32_t color, bool forceFull) {
-    if (parent->physicsLocked) {
+void drawSegment(Dot a, Dot b, uint32_t color, std::set<std::pair<int, int>>* saveTo) {
+    Dot dir = (b - a);
+    double len = dir.len();
+    dir = dir / len;
+    Dot cur = a;
+    for (int i = 0; i <= len; i++) {
+        int y = (int)(cur.y + 0.5 - (cur.y < 0)), x = (int)(cur.x + 0.5 - (cur.x < 0));
+        if (y >= 0 && x >= 0 && y < SCREEN_HEIGHT && x < SCREEN_WIDTH) {
+            buffer[y][x] = color;
+            if (saveTo != nullptr)
+                saveTo->insert({ y, x });
+        }
+        cur += dir;
+    }
+}
+
+/// Redraws full polygon, very slow
+void PolygonRenderer::EdgeDraw(uint32_t color) {
+    for (auto d : drawn) {
+        if (buffer[d.first][d.second] == lastColor)
+            buffer[d.first][d.second] = 0;
+    }
+    drawn.clear();
+    Dot next, cur;
+    for (int i = 0; i < shape->dots.size(); i++) {
+        next = shape->dots[i].unLocal(parent->transform);
+        if (i == 0) {
+            cur = shape->dots[shape->dots.size() - 1].unLocal(parent->transform);
+        }
+        else {
+            cur = shape->dots[i - 1].unLocal(parent->transform);
+        }
+        drawSegment(cur, next, color, &drawn);
+    }
+}
+
+void PolygonRenderer::Draw(uint32_t color, bool forceFull, bool edgeOnly) {
+    if (edgeOnly) {
+        Timer::start("edge draw");
+        EdgeDraw(color);
+        Timer::stop("edge draw");
+    } else if (parent->physicsLocked) {
         if (!init) {
             FullDraw(color);
             init = true;
@@ -126,4 +166,13 @@ void PolygonRenderer::Clear() {
     }
     init = false;
     drawn.clear();
+}
+
+void DrawDebugLine(Line l) {
+    for (int i = 0; i < SCREEN_HEIGHT; i++) {
+        Dot dot = l.get(i);
+        if (dot.x >= 0 && dot.y >= 0 && dot.x < SCREEN_WIDTH && dot.y < SCREEN_HEIGHT) {
+            buffer[(int)dot.y][(int)dot.x] = 255 * 256 * 256 + 255 * 256 + 255;
+        }
+    }
 }
