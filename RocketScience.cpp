@@ -9,7 +9,41 @@ namespace global {
     std::vector<Drawable*> drawable{};
     std::vector<Controlled*> controls{};
     std::mt19937 rnd(42);
+
+    std::vector<std::pair<std::string, std::function<Object* (Transform)>>> rocketBuilders = {
+        {"Basic", std::function<Object * (Transform)>(BuildRocket)},
+        {"Basic", std::function<Object * (Transform)>(BuildRocket)},
+        {"Basic", std::function<Object * (Transform)>(BuildRocket)},
+        {"Basic", std::function<Object * (Transform)>(BuildRocket)},
+    };
+    std::vector<std::pair<std::string, std::function<Transform()>>> levelBuilders = {
+        {"Lvl1", std::function<Transform()>(BuildLevel)},
+        {"Lvl2", std::function<Transform()>(BuildLevel)},
+        {"Lvl3", std::function<Transform()>(BuildLevel)},
+        {"Lvl4", std::function<Transform()>(BuildLevel)},
+    };
+
+    string state = "Menu";
+    int rocketChoice = 0;
+    int levelChoice = 0;
 };
+
+void Cleanup() {
+    for (Drawable* draw : global::drawable) {
+        draw->Clear();
+    }
+    for (Object* obj : global::objects) {
+        while (!obj->components.empty()) {
+            Component* todel = *obj->components.begin();
+            delete todel;
+        }
+        delete obj;
+    }
+    global::objects.clear();
+    global::colliders.clear();
+    global::drawable.clear();
+    global::controls.clear();
+}
 
 Object* BuildRocket(Transform at) {
     using namespace global;
@@ -41,4 +75,26 @@ Object* BuildRocket(Transform at) {
     controls.push_back(leftThruster);
     drawable.push_back(leftThruster);
     return objects.back();
+}
+
+Transform BuildLevel() {
+    using namespace global;
+    objects.push_back(new Object(Transform({ 0, 0 }, 0), "Ground"));
+    objects.back()->physicsLocked = true;
+    auto floorRenderer = newBoxRenderer(objects.back(), Transform({ SCREEN_WIDTH / 2, SCREEN_HEIGHT * 7 / 8 }, 0), SCREEN_WIDTH, SCREEN_HEIGHT / 4, 255);
+    drawable.push_back(floorRenderer);
+    colliders.push_back(floorRenderer);
+    for (int i = 0; i < 5; i++) {
+        objects.push_back(new Object(Transform({ double(rnd() % (SCREEN_WIDTH - 100) + 50), double(rnd() % (SCREEN_HEIGHT / 2)) }, pi / (rnd() % 100) * 200.0), "Box" + std::to_string(i)));
+        auto boxRenderer = newBoxRenderer(objects.back(), Transform({ 0, 0 }, 0), 50, 50, rnd() % 255 * 256 + rnd() % 255 + rnd() % 255 * 256 * 256);
+        drawable.push_back(boxRenderer);
+        colliders.push_back(boxRenderer);
+    }
+    objects.push_back(new Object(Transform({ double(rnd() % (SCREEN_WIDTH - 100) + 50), double(rnd() % (SCREEN_HEIGHT / 2)) }, pi / (rnd() % 100) * 200.0), "tri"));
+    auto triangleRenderer = new PolygonRenderer(objects.back(), new polygon(&objects.back()->transform, { {100, 100}, {100, 200}, {0, 0} }));
+    triangleRenderer->color = 255 * 256;
+    drawable.push_back(triangleRenderer);
+    colliders.push_back(triangleRenderer);
+
+    return Transform({ 200, 200 }, 0);
 }

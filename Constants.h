@@ -5,6 +5,7 @@ namespace colors {
     const uint32_t white = 0xffffff;
     const uint32_t brown = 0x4f3737;
     const uint32_t orange = 0xffa200;
+    const uint32_t yellow = 0xFFFF00;
 };
 
 const int LETTER_H = 8;

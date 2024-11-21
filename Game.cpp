@@ -9,7 +9,6 @@
 #include "RocketScience.h"
 #include "Constants.h"
 #include "UI.h"
-#include <queue>
 
 //  is_key_pressed(int button_vk_code) - check if a key is pressed,
 //                                       use keycodes (VK_SPACE, VK_RIGHT,
@@ -63,141 +62,30 @@ void fixCenters() {
     }
 }
 
-void RocketState(Object* rocket, double dt) {
-    bool done = false;
-    static double timer = 0;
-    for (Controlled* cont : global::controls) {
-        if (cont->active) {
-            UI::write("rocket state", "Thrusters enabled", colors::white);
-            timer = 0;
-            done = true;
-            break;
-        }
-    }
-    static std::queue<bool> onAir = {};
-    static int onAirCount = 0;
-    static std::vector<Collision> hits;
-    if (onAir.size() > 9) {
-        if (onAir.front())
-            onAirCount--;
-        onAir.pop();
-    }
-    onAir.push(rocket->collisions.empty());
-    if (onAir.back()) {
-        onAirCount++;
-    }
-    else {
-        hits = rocket->collisions;
-    }
-    if (!done) {
-        if (rocket->velocity.len() > 5 || abs(rocket->rotationSpeed) > 5) {
-            timer = 0;
-            UI::write("rocket state", "Rocket unstable", colors::white);
-            return;
-        }
-        if (onAirCount >= 10) {
-            timer = 0;
-            UI::write("rocket state", "Rocket in the air", colors::white);
-            return;
-        }
-        int score = 0;
-        for (auto& coll : hits) {
-            if (coll.hit == nullptr)
-                continue;
-            if (coll.hit->score == 0) {
-                timer = 0;
-                UI::write("rocket state", "Unsuitable terrain for landing", colors::white);
-                return;
-            }
-            else {
-                score += coll.hit->score;
-            }
-        }
-        timer += dt;
-        if (timer < 5) {
-            UI::write("rocket state", std::format("LANDING COMMENCING: {:.3f}", 5 - timer), colors::white);
-        }
-        else {
-            UI::write("rocket state", std::format("ROCKET LANDED, SCORE: {}", score), colors::white);
-        }
-    }
-
-}
-
-/// Initialize game data
-void initialize() {
-    using namespace global;
-    // set up backbuffer
-    memset(buffer, 0, SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(uint32_t));
-
-    UI::start("rocket state", { 20, 500 }, 2);
-
-
-    objects.push_back(new Object(Transform({ 0, 0 }, 0), "Ground"));
-    objects.back()->physicsLocked = true;
-    auto floorRenderer = newBoxRenderer(objects.back(), Transform({ SCREEN_WIDTH / 2, SCREEN_HEIGHT * 7 / 8 }, 0), SCREEN_WIDTH, SCREEN_HEIGHT / 4, 255);
-    drawable.push_back(floorRenderer);
-    colliders.push_back(floorRenderer);
-    for (int i = 0; i < 5; i++) {
-        objects.push_back(new Object(Transform({ double(rnd() % (SCREEN_WIDTH - 100) + 50), double(rnd() % (SCREEN_HEIGHT / 2)) }, pi / (rnd() % 100) * 200.0), "Box" + std::to_string(i)));
-        auto boxRenderer = newBoxRenderer(objects.back(), Transform({ 0, 0 }, 0), 50, 50, rnd() % 255 * 256 + rnd() % 255 + rnd() % 255 * 256 * 256);
-        drawable.push_back(boxRenderer);
-        colliders.push_back(boxRenderer);
-    }
-    objects.push_back(new Object(Transform({ double(rnd() % (SCREEN_WIDTH - 100) + 50), double(rnd() % (SCREEN_HEIGHT / 2)) }, pi / (rnd() % 100) * 200.0), "tri"));
-    auto triangleRenderer = new PolygonRenderer(objects.back(), new polygon(&objects.back()->transform, { {100, 100}, {100, 200}, {0, 0} }));
-    triangleRenderer->color = 255 * 256;
-    drawable.push_back(triangleRenderer);
-    colliders.push_back(triangleRenderer);
-    BuildRocket(Transform({ 200, 200 }, 0));
+void startGame() {
+    ClearMenu();
+    Cleanup();
+    auto rocketPos = global::levelBuilders[global::levelChoice].second();
+    global::rocketBuilders[global::rocketChoice].second(rocketPos);
     fixCenters();
-}
-void DrawDebugLine(Line l) {
-    for (int i = 0; i < SCREEN_HEIGHT; i++) {
-        Dot dot = l.get(i);
-        if (dot.x >= 0 && dot.y >= 0 && dot.x < SCREEN_WIDTH && dot.y < SCREEN_HEIGHT) {
-            buffer[(int)dot.y][(int)dot.x] = 255 * 256 * 256 + 255 * 256 + 255;
-        }
-    }
+    UI::start("rocket state", { 20, 500 }, 2);
+    Timer::start("/land");
+    global::state = "Game";
 }
 
-/// Called to update game data,
-/// dt - time elapsed since the previous update (in seconds)
-void act(float dt) {
-    using namespace global;
-    //if (!is_window_active()) return;
-    if (is_key_pressed(VK_ESCAPE)) schedule_quit_game();
-
-    for (auto& object : objects) {
-        if (!object->physicsLocked) {
-            object->applyForce(dotUp * 9.8 * object->mass, object->transform.pos);
-        }
-    }
-    for (int i = 0; i < colliders.size(); i++) {
-        for (int j = i + 1; j < colliders.size(); j++) {
-            if (colliders[i]->parent->physicsLocked && colliders[j]->parent->physicsLocked) {
-                continue;
-            }
-            if (colliders[i]->parent == colliders[j]->parent) {
-                continue;
-            }
-            auto inter = intersect(*colliders[i]->shape, *colliders[j]->shape);
-            if (inter.first > 0) {
-                if (colliders[i]->parent->name == "Box1") {
-                    colliders[i]->parent->name = "Box1";
-                }
-                //DrawLine(inter.second);
-                resolveCollision(colliders[i], colliders[j], inter.second);
-            }
-        }
-    }
+void evalControls(float dt) {
     std::unordered_set<char> pressed = {};
-    for (char button : vector<char>{ VK_SPACE, VK_RIGHT,VK_LEFT, VK_UP, VK_DOWN, 'A', 'B' }) {
+    for (char button : vector<char>{ VK_ESCAPE, VK_SPACE, VK_RIGHT,VK_LEFT, VK_UP, VK_DOWN, 'A', 'B' }) {
         if (is_key_pressed(button)) {
             pressed.insert(button);
         }
     }
-    for (auto& control : controls) {
+    if (pressed.contains(VK_ESCAPE)) {
+        schedule_quit_game();
+        return;
+    }
+
+    for (auto& control : global::controls) {
         bool active = false;
         for (char button : control->buttonFilter) {
             if (pressed.contains(button)) {
@@ -210,26 +98,91 @@ void act(float dt) {
         else
             control->stop();
     }
-    //OutputDebugStringA(std::format("{}\n", cnt).c_str());
-    for (auto& object : objects) {
-        if (object->name == "Rocket") {
-            RocketState(object, dt);
+
+    if (global::state == "Menu") {
+        if (pressed.contains(VK_RIGHT) && Timer::elapsed("/r") > 0.3) {
+            global::rocketChoice = (global::rocketChoice + 1) % (int)global::rocketBuilders.size();
+            Timer::start("/r");
         }
+        if (pressed.contains(VK_LEFT) && Timer::elapsed("/l") > 0.3) {
+            global::rocketChoice = (global::rocketChoice - 1 + (int)global::rocketBuilders.size()) % (int)global::rocketBuilders.size();
+            Timer::start("/l");
+        }
+        if (pressed.contains(VK_DOWN) && Timer::elapsed("/d") > 0.3) {
+            global::levelChoice = (global::levelChoice + 1) % (int)global::levelBuilders.size();
+            Timer::start("/d");
+        }
+        if (pressed.contains(VK_UP) && Timer::elapsed("/u") > 0.3) {
+            global::levelChoice = (global::levelChoice - 1 + (int)global::levelBuilders.size()) % (int)global::levelBuilders.size();
+            Timer::start("/u");
+        }
+        if (pressed.contains(VK_SPACE) && Timer::elapsed("/space") > 0.3) {
+            startGame();
+            Timer::start("/space");
+        }
+    }
+}
+
+void tickPhysics(float dt) {
+    using namespace global;
+    for (auto& object : objects) {//gravity
         if (!object->physicsLocked) {
-            object->evalCollisions(dt);
+            object->applyForce(dotUp * 9.8 * object->mass, object->transform.pos);
+        }
+    }
+    for (int i = 0; i < colliders.size(); i++) {//find collisions
+        for (int j = i + 1; j < colliders.size(); j++) {
+            if (colliders[i]->parent->physicsLocked && colliders[j]->parent->physicsLocked || colliders[i]->parent == colliders[j]->parent) {
+                continue;
+            }
+            auto inter = intersect(*colliders[i]->shape, *colliders[j]->shape);
+            if (inter.first > 0) {
+                resolveCollision(colliders[i], colliders[j], inter.second);
+            }
         }
     }
     for (auto& object : objects) {
+        if (object->name == "Rocket") {//check win condition
+            RocketState(object);
+        }
+        if (!object->physicsLocked) {//apply collisions
+            object->evalCollisions(dt);
+        }
+    }
+    for (auto& object : objects) {//change speed
         if (!object->physicsLocked) {
             object->evalForces(dt);
         }
     }
-    for (auto& object : objects) {
+    for (auto& object : objects) {//apply speed
         if (!object->physicsLocked) {
             object->transform.pos += object->velocity * dt;
-            if (abs(object->rotationSpeed) > 0.05)
-                object->transform.rot += object->rotationSpeed * dt;
+            object->transform.rot += object->rotationSpeed * dt;
         }
+    }
+}
+/// Initialize game data
+void initialize() {
+    using namespace global;
+    // set up backbuffer
+    memset(buffer, 0, SCREEN_HEIGHT * SCREEN_WIDTH * sizeof(uint32_t));
+    Timer::start("/r");
+    Timer::start("/l");
+    Timer::start("/u");
+    Timer::start("/d");
+    Timer::start("/space");
+}
+
+/// Called to update game data,
+/// dt - time elapsed since the previous update (in seconds)
+void act(float dt) {
+    if (!is_window_active())
+        return;
+
+    evalControls(dt);
+
+    if (global::state == "Game") {
+        tickPhysics(dt);
     }
 }
 
@@ -238,14 +191,17 @@ void act(float dt) {
 /// uint32_t buffer[SCREEN_HEIGHT][SCREEN_WIDTH] - is an array of 32-bit colors
 /// (8 bits per R, G, B)
 void draw() {
-    //if (!is_window_active()) return;
+    if (!is_window_active()) return;
     for (auto& renderer : global::drawable) {
         renderer->Draw();
+    }
+    if (global::state == "Menu") {
+        DrawMenu();
     }
     Timer::print();
 }
 
 /// free game data in this function
 void finalize() {
-    using namespace global;
+    Cleanup();
 }

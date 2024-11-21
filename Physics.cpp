@@ -39,7 +39,7 @@ void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, dou
 }
 
 void Object::evalForces(double dt) {
-    for (std::pair<Dot, Dot> force : forces) {
+    for (std::pair<Dot, Dot>& force : forces) {
         if (force.first.len() < eps)
             continue;
         velocity += (force.first / mass) * dt;
@@ -52,15 +52,16 @@ void Object::evalForces(double dt) {
 }
 
 void Object::evalCollisions(double dt) {
-    for (Collision coll : collisions) {
+    for (Collision& coll : collisions) {
         Line norm = Line(coll.at, coll.at + coll.norm);
         Dot force = dotZero;
-        for (auto f : forces) {
+        for (auto& f : forces) {
             force += norm.project(coll.at + f.first) - coll.at;
         }
         if (force * coll.norm > 0) {
             continue;
         }
+        coll.hit->parent->applyForce(force, coll.at);
         applyForce(-force, coll.at);
     }
     collisions.clear();

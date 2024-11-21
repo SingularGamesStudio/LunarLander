@@ -26,7 +26,8 @@ struct Timer {
         if (instance().startTime[name] == std::chrono::system_clock::time_point{}) {
             return -1;
         }
-        return (std::chrono::system_clock::now() - instance().startTime[name]).count();
+        std::chrono::duration<double> res = (std::chrono::system_clock::now() - instance().startTime[name]);
+        return res.count();
     }
     static void stop(string name) {
         auto t0 = std::chrono::system_clock::now();
@@ -47,7 +48,8 @@ struct Timer {
     static void print() {
         OutputDebugStringA("timers:\n");
         for (auto p : instance().value) {
-            OutputDebugStringA(std::format("{}: {:.4f} ", p.first, p.second.count()).c_str());
+            if (p.first[0] != '/')
+                OutputDebugStringA(std::format("{}: {:.4f} ", p.first, p.second.count()).c_str());
         }
         OutputDebugStringA("\n");
     }
