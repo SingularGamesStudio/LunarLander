@@ -72,7 +72,7 @@ void Object::evalForces(double dt) {
         velocity += (force.first / mass) * dt;
         Dot arm = Line(force.second, force.second + force.first).project(transform.pos) - transform.pos;
         double moment = force.first.len() * arm.len() * (arm % force.first > 0 ? 1 : -1);
-        rotationSpeed += moment / inertia;
+        rotationSpeed += moment * dt * 50 / inertia;
     }
 
     forces.clear();
