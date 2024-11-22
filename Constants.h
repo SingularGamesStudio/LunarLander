@@ -6,26 +6,59 @@ namespace colors {
     const uint32_t brown = 0x4f3737;
     const uint32_t orange = 0xffa200;
     const uint32_t yellow = 0xFFFF00;
+    const uint32_t grey = 0x708090;
+    const uint32_t green = 0x00FF00;
 };
 
-const double damageTreshold = 100;
-const double rotWinTreshold = 3;
+const double damageTreshold = 400;
+const double rotWinTreshold = 2;
 const double velWinTreshold = 12;
+const double explForce = 50;
 
 const int LETTER_H = 8;
 const int LETTER_W = 8;
 
-const unsigned char explosion[5][8] = {
+const unsigned char explosion[4][8] = {
     {
         0b00000000,
         0b00000000,
-        0b00000000,
-        0b00100000,
         0b00001000,
+        0b00111000,
+        0b00011000,
         0b00100000,
         0b00000000,
         0b00000000,
-    }
+    },
+    {
+        0b00000000,
+        0b00000100,
+        0b01001000,
+        0b00101000,
+        0b00011000,
+        0b00110100,
+        0b01000000,
+        0b00000000,
+    },
+    {
+        0b00000010,
+        0b10010100,
+        0b01011000,
+        0b00001010,
+        0b01100100,
+        0b00010000,
+        0b01010010,
+        0b10000001,
+    },
+    {
+        0b00010000,
+        0b10010000,
+        0b00000001,
+        0b00000000,
+        0b10000000,
+        0b00000000,
+        0b00000000,
+        0b10000001,
+    },
 };
 
 const unsigned char letters[128][8] = {

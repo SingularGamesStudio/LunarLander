@@ -11,7 +11,7 @@ namespace global {
     extern std::mt19937 rnd;
 
     extern std::vector<std::pair<std::string, std::function<Object* (Transform)>>> rocketBuilders;
-    extern std::vector<std::pair<std::string, std::function<Transform()>>> levelBuilders;
+    extern std::vector<std::pair<std::string, std::function<void(std::function<Object* (Transform)>)>>> levelBuilders;
 
     extern string state;
     extern int rocketChoice;
@@ -22,6 +22,13 @@ namespace global {
 };
 void Cleanup();
 
-Object* BuildRocket(Transform at);
+Object* BuildRocket1(Transform at);
+Object* BuildRocket2(Transform at);
+Object* BuildRocket3(Transform at);
+Object* BuildRocket4(Transform at);
 
-Transform BuildLevel();
+
+void BuildLevel1(std::function<Object* (Transform)> rocketBuilder);
+void BuildLevel2(std::function<Object* (Transform)> rocketBuilder);
+void BuildLevel3(std::function<Object* (Transform)> rocketBuilder);
+void BuildLevel4(std::function<Object* (Transform)> rocketBuilder);

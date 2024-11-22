@@ -28,6 +28,7 @@ struct Object {
     double rotationSpeed = 0;
     Dot velocity = dotZero;
 
+    double inertiaMod = 1;
     double mass = 1;
     double inertia = 1000;
     bool physicsLocked = false;

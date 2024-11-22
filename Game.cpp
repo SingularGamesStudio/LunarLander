@@ -25,8 +25,7 @@
 void startGame() {
     ClearMenu();
     Cleanup();
-    auto rocketPos = global::levelBuilders[global::levelChoice].second();
-    global::rocketBuilders[global::rocketChoice].second(rocketPos);
+    global::levelBuilders[global::levelChoice].second(global::rocketBuilders[global::rocketChoice].second);
     for (auto obj : global::objects) {
         fixCenter(obj);
     }
@@ -184,6 +183,15 @@ void draw() {
     }
     if (global::state == "Game") {
         UI::write("tip", "Arrow keys to move\n<A> to exit to menu\n<ESC> to exit", colors::white);
+        std::vector<Explosion*> del;
+        for (Explosion* exp : global::explosions) {
+            if (!exp->draw(colors::orange))
+                del.push_back(exp);
+        }
+        for (Explosion* exp : del) {
+            global::explosions.erase(exp);
+            delete exp;
+        }
     }
     if (global::state == "Menu") {
         DrawMenu();

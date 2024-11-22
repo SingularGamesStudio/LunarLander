@@ -86,6 +86,11 @@ struct Rot {
     Rot& operator-=(const Rot& other) { return *this = Rot{ angle - other.angle }; }
     Rot operator-() const { return Rot{ -angle }; }
     Rot operator*(const double by) const { return Rot{ angle * by }; }
+
+    bool operator<(const Rot& other) {
+        return angle < other.angle;
+    }
+
     Dot vector() const { return Dot{ cos(angle), sin(angle) }; }
 };
 /// Signed angle from direction a to direction b

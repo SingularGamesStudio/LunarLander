@@ -41,9 +41,9 @@ void UI::start(string name, std::pair<int, int > pos, int scale) {
 
 namespace Layout {
     const std::pair<int, int> RocketPreviewPos = { SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
-    const int RocketPreviewWidth = 400;
-    const std::pair<int, int> RocketHalfSize = { 50, 100 };
-    const std::pair<int, int> LevelSelectPos = { SCREEN_WIDTH - 200, 8 * 11 };
+    const int RocketPreviewWidth = 700;
+    const std::pair<int, int> RocketHalfSize = { 100, 100 };
+    const std::pair<int, int> LevelSelectPos = { SCREEN_WIDTH - 400, 8 * 11 };
     const std::pair<int, int> ControlsPos = { 0, 600 };
 }
 
@@ -127,13 +127,17 @@ void DrawWinScreen(std::queue<std::pair<PolyCollider*, PolyCollider*>> hits) {
     scoreExlp += std::format("Rocket parts destroyed: -{}x30\n", global::componentsDestroyed);
     score -= (int)Timer::elapsed("/game");
     scoreExlp += std::format("Time passed: -{}\nLanding:\n", (int)Timer::elapsed("/game"));
+    std::set<std::pair<PolyCollider*, PolyCollider*>> uniq;
     while (!hits.empty()) {
-        auto hit = hits.front();//TODO:unique
+        auto hit = hits.front();
         hits.pop();
         if (hit.first != nullptr && hit.second != nullptr) {
-            score += hit.first->score * hit.second->score;
-            scoreExlp += std::format("{}x{}: +{}x{}\n", hit.first->name, hit.second->name, hit.first->score, hit.second->score);
+            uniq.insert(hit);
         }
+    }
+    for (auto hit : uniq) {
+        score += hit.first->score * hit.second->score;
+        scoreExlp += std::format("{}x{}: +{}x{}\n", hit.first->name, hit.second->name, hit.first->score, hit.second->score);
     }
     scoreExlp += "\n      (space to exit)";
     UI::start("end", Layout::EndTitlePos, 8);
@@ -208,7 +212,7 @@ void RocketState(Object* rocket) {
             return;
         }
 
-        if (Timer::elapsed("/land") < 3) {
+        if (Timer::elapsed("/land") < 5) {
             UI::write("rocket state", std::format("LANDING COMMENCING: {:.3f}", 5 - Timer::elapsed("/land")), colors::white);
         }
         else {

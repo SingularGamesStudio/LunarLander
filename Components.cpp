@@ -24,7 +24,10 @@ void PolyCollider::TakeDamage(double dmg) {
         if (hp <= 0) {
             if (parent->name == "Rocket")
                 global::componentsDestroyed++;
-            //TODO:explosion
+            Dot center = shape->Center().unLocal(parent->transform);
+            new Explosion(std::pair<int, int>(center.y, center.x), shape->Radius() / 4);
+            Dot force = (parent->transform.pos - center);
+            parent->applyForce(force * explForce * shape->Radius(), center);
             fixCenter(parent);
         }
     }

@@ -1,7 +1,16 @@
 #pragma once
 #include"Object.h"
+#include"Constants.h"
 #include "Windows.h"
 #include<format>
+#include<chrono>
+#include<set>
+
+struct Explosion;
+
+namespace global {
+    extern std::set<Explosion*> explosions;
+}
 
 template <>
 struct std::hash<std::pair<int, int>> {
@@ -101,8 +110,47 @@ public:
 };
 
 struct Explosion {
-    Dot position;
-    int scale;
-    double nextFrame;
-    std::unordered_set<std::pair<int, int>> drawn{};
+    std::pair<int, int> pos;
+    int scale = 1;
+    int frame = 0;
+    std::chrono::system_clock::time_point nextFrame{};
+
+    Explosion() {}
+    Explosion(std::pair<int, int> pos, int scale) :pos(pos), scale(scale) {
+        nextFrame = std::chrono::system_clock::now() + std::chrono::milliseconds(200);
+        global::explosions.insert(this);
+    }
+    bool draw(uint32_t color) {
+        if (std::chrono::system_clock::now() >= nextFrame) {
+            _draw(0);
+            frame++;
+            if (frame > 4)
+                return false;
+            else {
+                _draw(color);
+                nextFrame = std::chrono::system_clock::now() + std::chrono::milliseconds(200);
+            }
+        }
+        else {
+            _draw(color);
+        }
+        return true;
+    }
+private:
+    void _draw(uint32_t color) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                if (((explosion[frame][i] >> j) & 1) == 0)
+                    continue;
+                for (int di = 0; di < scale; di++) {
+                    for (int dj = 0; dj < scale; dj++) {
+                        int x = pos.first + (i - 3) * scale + di;
+                        int y = pos.second + (j - 3) * scale + dj;
+                        if (x >= 0 && x < SCREEN_HEIGHT && y >= 0 && y < SCREEN_WIDTH)
+                            buffer[x][y] = color;
+                    }
+                }
+            }
+        }
+    }
 };

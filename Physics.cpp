@@ -16,38 +16,51 @@ void _resolveCollision(PolyCollider* a, PolyCollider* b, Dot aShift, Dot at, dou
         if (!second) {
             Dot aVel = norm.project(a->parent->velocity + aAngular + at) - at;
             Dot parVel = a->parent->velocity + aAngular - aVel;
-            a->TakeDamage(aVel.len() * a->mass);
-            if (aVel.len() > eps)
-                a->parent->velocity -= aVel * (1 + floorDamping);
-            if (parVel.len() > eps)
-                parralel = parVel / parVel.len();
+            a->TakeDamage(aVel.len() * a->parent->mass);
+            if (a->hp > 0) {
+                if (aVel.len() > eps)
+                    a->parent->velocity -= aVel * (1 + floorDamping);
+                if (parVel.len() > eps)
+                    parralel = parVel / parVel.len();
+            }
         }
-        a->parent->collisions.push_back(Collision{ at, aShift , parralel, {a, b} });
+        if (a->hp > 0) {
+            a->parent->collisions.push_back(Collision{ at, aShift , parralel, {a, b} });
+        }
     }
     else {//two dynamic objects
         if (!second) {
             Dot aVel = norm.project(a->parent->velocity + aAngular + at) - at;
             Dot bVel = norm.project(b->parent->velocity + bAngular + at) - at;// абсоллютно упругий удар
             Dot parVel = a->parent->velocity + aAngular - aVel - (b->parent->velocity + bAngular - bVel);
-            a->TakeDamage((aVel - bVel).len() * b->mass);
-            b->TakeDamage((aVel - bVel).len() * a->mass);
+            double dmg = (aVel - bVel).len() / (aVel.len() + bVel.len()) * (bVel.len() * b->parent->mass + aVel.len() * a->parent->mass);
+            a->TakeDamage(dmg);
+            b->TakeDamage(dmg);
             Dot aVel1 = (aVel * (a->parent->mass - b->parent->mass) + bVel * 2 * b->parent->mass) / (a->parent->mass + b->parent->mass);
             Dot bVel1 = (bVel * (b->parent->mass - a->parent->mass) + aVel * 2 * a->parent->mass) / (a->parent->mass + b->parent->mass);
-            a->parent->velocity -= aVel;
-            b->parent->velocity -= bVel;
-            if (aVel1.len() > eps) {
-                a->parent->velocity += aVel1 * airDamping;
+            if (a->hp > 0) {
+                a->parent->velocity -= aVel;
+                if (aVel1.len() > eps) {
+                    a->parent->velocity += aVel1 * airDamping;
+                }
             }
-            if (bVel1.len() > eps) {
-                b->parent->velocity += bVel1 * airDamping;
+            if (b->hp > 0) {
+                b->parent->velocity -= bVel;
+                if (bVel1.len() > eps) {
+                    b->parent->velocity += bVel1 * airDamping;
+                }
             }
             if (parVel.len() > eps)
                 parralel = parVel / parVel.len();
         }
-        a->parent->transform.pos += aShift / 2;
-        b->parent->transform.pos -= aShift / 2;
-        a->parent->collisions.push_back(Collision{ at, aShift , parralel, {a, b} });
-        b->parent->collisions.push_back(Collision{ at, -aShift, -parralel,  {b, a} });
+        if (a->hp > 0) {
+            a->parent->transform.pos += aShift / 2;
+            a->parent->collisions.push_back(Collision{ at, aShift , parralel, {a, b} });
+        }
+        if (b->hp > 0) {
+            b->parent->transform.pos -= aShift / 2;
+            b->parent->collisions.push_back(Collision{ at, -aShift, -parralel,  {b, a} });
+        }
     }
 }
 
@@ -136,8 +149,8 @@ void fixCenter(Object* obj) {
             }
         }
     }
-    obj->transform.pos += massCenter;
+    obj->transform.pos = massCenter.unLocal(obj->transform);
     obj->mass = mass;
     double r = getRadius(obj);
-    obj->inertia = mass * r * r;
+    obj->inertia = mass * r * r * obj->inertiaMod;
 }
