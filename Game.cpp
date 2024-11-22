@@ -160,6 +160,7 @@ void initialize() {
 /// Called to update game data,
 /// dt - time elapsed since the previous update (in seconds)
 void act(float dt) {
+    global::lastDT = dt;
     if (!is_window_active())
         return;
 

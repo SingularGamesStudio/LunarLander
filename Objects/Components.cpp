@@ -27,7 +27,7 @@ void PolyCollider::TakeDamage(double dmg) {
             Dot center = shape->Center().unLocal(parent->transform);
             new Explosion(std::pair<int, int>(center.y, center.x), shape->Radius() / 4);
             Dot force = (parent->transform.pos - center);
-            parent->applyForce(force * explForce * shape->Radius(), center);
+            parent->applyForce(force * explForce * shape->Radius() / global::lastDT / 50, center);
             fixCenter(parent);
         }
     }

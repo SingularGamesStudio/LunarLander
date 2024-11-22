@@ -28,6 +28,7 @@ namespace global {
     int rocketChoice = 0;
     int levelChoice = 0;
     int componentsDestroyed = 0;
+    double lastDT = 0.1;
 };
 
 void Cleanup() {
