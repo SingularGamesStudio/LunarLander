@@ -121,6 +121,7 @@
       <ConformanceMode>true</ConformanceMode>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>.\;.\Rendering;.\Objects;.\Engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -146,25 +147,25 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Components.h" />
-    <ClInclude Include="Constants.h" />
-    <ClInclude Include="Engine.h" />
-    <ClInclude Include="Geometry.h" />
-    <ClInclude Include="Object.h" />
+    <ClInclude Include="Engine\Constants.h" />
+    <ClInclude Include="Engine\Engine.h" />
+    <ClInclude Include="Engine\Geometry.h" />
+    <ClInclude Include="Engine\Timer.h" />
+    <ClInclude Include="Objects\Components.h" />
+    <ClInclude Include="Objects\Object.h" />
+    <ClInclude Include="Rendering\UI.h" />
     <ClInclude Include="RocketScience.h" />
-    <ClInclude Include="Timer.h" />
-    <ClInclude Include="UI.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Components.cpp" />
-    <ClCompile Include="Engine.cpp" />
+    <ClCompile Include="Engine\Engine.cpp" />
+    <ClCompile Include="Engine\Geometry.cpp" />
+    <ClCompile Include="Engine\Intersect.cpp" />
     <ClCompile Include="Game.cpp" />
-    <ClCompile Include="Geometry.cpp" />
-    <ClCompile Include="Intersect.cpp" />
-    <ClCompile Include="Physics.cpp" />
-    <ClCompile Include="Render.cpp" />
+    <ClCompile Include="Objects\Components.cpp" />
+    <ClCompile Include="Objects\Physics.cpp" />
+    <ClCompile Include="Rendering\Render.cpp" />
+    <ClCompile Include="Rendering\UI.cpp" />
     <ClCompile Include="RocketScience.cpp" />
-    <ClCompile Include="UI.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
